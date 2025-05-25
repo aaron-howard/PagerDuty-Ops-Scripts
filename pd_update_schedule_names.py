@@ -11,6 +11,8 @@ import os
 import sys
 import argparse
 import json
+import dotenv
+dotenv.load_dotenv()
 
 def parse_arguments():
     """Parse command line arguments."""

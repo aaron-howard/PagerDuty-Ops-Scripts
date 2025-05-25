@@ -8,6 +8,8 @@ API token should be set via the PD_API_TOKEN environment variable.
 
 import requests
 import os
+import dotenv
+dotenv.load_dotenv()
 
 API_TOKEN = os.environ.get('PD_API_TOKEN')
 if not API_TOKEN:

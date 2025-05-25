@@ -16,6 +16,8 @@ import argparse
 from datetime import datetime
 import csv
 import io
+import dotenv
+dotenv.load_dotenv()
 
 def parse_arguments():
     """Parse command line arguments."""
