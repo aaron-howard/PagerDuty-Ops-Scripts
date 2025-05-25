@@ -121,21 +121,35 @@ def generate_output(teams, schedules, escalation_policies, services, webhooks, f
     # Map webhooks to teams via services
     team_webhooks = {}
     service_team_map = {service['id']: service.get('teams', []) for service in services}
+    # ... (rest of your code above remains unchanged)
+
+    # Map webhooks to teams via services    team_webhooks = {}
+    service_team_map = {service['id']: service.get('teams', []) for service in services}
     for webhook in webhooks:
-        delivery_method = webhook.get("delivery_method", {})
+        # Extract service ID from webhook data structure
         service_id = None
-        if "connection" in delivery_method and "service" in delivery_method["connection"]:
-            service_id = delivery_method["connection"]["service"]["id"]
+        
+        # Check for filter with service_reference type
+        if "filter" in webhook and webhook["filter"] and webhook["filter"].get("type") == "service_reference":
+            service_id = webhook["filter"].get("id")
+        # Fallback to direct service reference if available
+        elif "service" in webhook and webhook["service"] and "id" in webhook["service"]:
+            service_id = webhook["service"]["id"]
+        # Legacy structure fallback
+        elif "delivery_method" in webhook:
+            delivery_method = webhook.get("delivery_method", {})
+            if "connection" in delivery_method and "service" in delivery_method["connection"]:
+                service_id = delivery_method["connection"]["service"]["id"]
+
         if service_id and service_id in service_team_map:
             for team in service_team_map[service_id]:
                 team_id = team.get("id")
                 if team_id not in team_webhooks:
                     team_webhooks[team_id] = []
                 team_webhooks[team_id].append({
-                    "id": webhook.get("id"),
+                    "id": webhook.get("id", ""),
                     "name": webhook.get("description", "No description")
                 })
-
     for team in teams:
         team_id = team.get("id")
         team_name = team.get("name")
