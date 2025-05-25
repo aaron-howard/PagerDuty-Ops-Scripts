@@ -1,7 +1,17 @@
 import requests
+import os
+import dotenv
 
-API_KEY = "u+uFYRCsJKzuwAHXtHVA"  # Replace with your actual API ke
-USER_ID = "PFV7M6N" # Replace with your actual user ID
+dotenv.load_dotenv()
+
+API_KEY = os.environ.get("PD_API_TOKEN")
+USER_ID = os.environ.get("PD_USER_ID")  # Optionally set in .env, or prompt
+
+if not API_KEY:
+    API_KEY = input("Enter your PagerDuty API key: ")
+if not USER_ID:
+    USER_ID = input("Enter the PagerDuty user ID: ")
+
 URL = f"https://api.pagerduty.com/users/{USER_ID}/permissions"
 
 headers = {
@@ -10,13 +20,13 @@ headers = {
 }
 
 def get_user_permissions():
-    response = requests.get(URL, headers=headers)
-    
-    if response.status_code == 200:
+    try:
+        response = requests.get(URL, headers=headers)
+        response.raise_for_status()
         return response.json()
-    else:
-        return f"Error: {response.status_code} - {response.text}"
+    except requests.RequestException as e:
+        return f"Error: {e}"
 
-# Call the function and print the result
-permissions = get_user_permissions()
-print(permissions)
+if __name__ == "__main__":
+    permissions = get_user_permissions()
+    print(permissions)
