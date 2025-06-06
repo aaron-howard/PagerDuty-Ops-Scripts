@@ -63,10 +63,10 @@ def update_user_role(user_id, new_role):
 def main():
     users = get_all_users()
     # Example: promote all 'observer' users to 'user'
-    observer_users = [u for u in users if u.get('role') == 'observer']
+    observer_users = [u for u in users if u.get('role') == 'user']
     for user in observer_users:
         user_id = user['id']
-        update_user_role(user_id, 'user')
+        update_user_role(user_id, 'observer')
 
 if __name__ == "__main__":
     main()
