@@ -6,7 +6,7 @@ import dotenv
 dotenv.load_dotenv()
 
 API_KEY = os.environ.get("PD_API_TOKEN")
-TEAM_ID = "P8Y1SIT"  # Replace with your actual team ID
+TEAM_ID = "P527OXV"  # Replace with your actual team ID
 
 if not API_KEY:
     API_KEY = input("Enter your PagerDuty API key: ")
