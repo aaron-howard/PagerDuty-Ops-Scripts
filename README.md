@@ -18,6 +18,15 @@ Daily Operations Scripts for managing the PagerDuty application.
    ```bash
    export PD_API_TOKEN=your_token_here
    ```
+3. For team-specific scripts, set your team ID:
+   ```bash
+   export PD_TEAM_ID=your_team_id_here
+   ```
+
+## Environment Variables
+
+- `PD_API_TOKEN`: Your PagerDuty API token (required for all scripts)
+- `PD_TEAM_ID`: Your PagerDuty team ID (required for team-specific scripts)
 
 ## Scripts
 
@@ -29,7 +38,7 @@ Exports PagerDuty teams, schedules, escalation policies, services, and webhook s
 ```bash
 python pd_export_ids.py [-t API_TOKEN] [-o OUTPUT_FILE] [-f FORMAT]
 ```
-- `-t`, `--token`: PagerDuty API token. If omitted, uses the `PD_API_TOKEN` environment variable or prompts for input.
+- `-t`, `--token`: PagerDuty API token. If omitted, uses the `PD_API_TOKEN` environment variable or prompts for secure input.
 - `-o`, `--output`: Output file (default: print to console).
 - `-f`, `--format`: Output format: `table`, `csv`, or `json` (default: `table`).
 
@@ -66,13 +75,66 @@ python pd_update_schedule_names.py [--list] [--filter TEXT] [--dry-run]
 - `-l`, `--list`: List schedules without making changes.
 - `-f`, `--filter`: Only process schedules containing this text in their name.
 - `--dry-run`: Show what would be done without making changes to the schedules.
+
+### `pd_update_escalation_policy_names.py`
+
+Updates PagerDuty escalation policy names by appending "EP" to the end of each policy name if it doesn't already have it.
+
+**Usage:**
+```powershell
 $env:PD_API_TOKEN="your_token_here"
-python pd_update_service_names.py [-t API_TOKEN] [-d] [-l] [-f FILTER]
+python pd_update_escalation_policy_names.py [--list] [--filter TEXT] [--dry-run]
 ```
-- `-t`, `--token`: PagerDuty API token. If omitted, uses the `PD_API_TOKEN` environment variable or prompts for input.
-- `-d`, `--dry-run`: Perform a dry run (show what would change without making changes).
-- `-l`, `--list`: List services without making changes.
-- `-f`, `--filter`: Filter services by name (only update services containing this string).
+
+### `pd_update_team_roles.py`
+
+Lists team members and allows interactive role updates.
+
+**Usage:**
+```bash
+export PD_API_TOKEN=your_token_here
+export PD_TEAM_ID=your_team_id_here
+python pd_update_team_roles.py
+```
+
+### `pd_get_teams_user_role.py`
+
+Lists team members and their roles in a table format.
+
+**Usage:**
+```bash
+export PD_API_TOKEN=your_token_here
+export PD_TEAM_ID=your_team_id_here
+python pd_get_teams_user_role.py
+```
+
+### `pd_remove_team_members.py`
+
+Interactive script to remove team members from schedules, escalation policies, and the team.
+
+**Usage:**
+```bash
+export PD_API_TOKEN=your_token_here
+export PD_TEAM_ID=your_team_id_here
+python pd_remove_team_members.py
+```
+
+### `update_service_notifications.py`
+
+Updates all services to use severity-based incident urgency rules.
+
+**Usage:**
+```bash
+export PD_API_TOKEN=your_token_here
+python update_service_notifications.py
+```
+
+## Security Features
+
+- **Secure Token Input**: API tokens are requested using `getpass.getpass()` to prevent them from appearing in terminal history
+- **Environment Variables**: Sensitive data like API tokens and team IDs are stored in environment variables
+- **Request Timeouts**: All HTTP requests include 30-second timeouts to prevent hanging
+- **Input Validation**: Scripts validate required inputs before proceeding
 
 ## Contributing
 

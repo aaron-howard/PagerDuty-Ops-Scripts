@@ -31,7 +31,8 @@ def get_all_users():
             resp = requests.get(
                 'https://api.pagerduty.com/users',
                 headers=HEADERS,
-                params={'limit': limit, 'offset': offset}
+                params={'limit': limit, 'offset': offset},
+                timeout=30
             )
             print(f"Status: {resp.status_code}")
             resp.raise_for_status()
@@ -51,7 +52,8 @@ def update_user_role(user_id, new_role):
         resp = requests.patch(
             f'https://api.pagerduty.com/users/{user_id}',
             headers=HEADERS,
-            json={'user': {'role': new_role}}
+            json={'user': {'role': new_role}},
+            timeout=30
         )
         if resp.status_code == 200:
             print(f"Updated user {user_id} to role '{new_role}'.")
@@ -63,10 +65,10 @@ def update_user_role(user_id, new_role):
 def main():
     users = get_all_users()
     # Example: promote all 'observer' users to 'user'
-    observer_users = [u for u in users if u.get('role') == 'user']
+    observer_users = [u for u in users if u.get('role') == 'observer']
     for user in observer_users:
         user_id = user['id']
-        update_user_role(user_id, 'observer')
+        update_user_role(user_id, 'user')
 
 if __name__ == "__main__":
     main()

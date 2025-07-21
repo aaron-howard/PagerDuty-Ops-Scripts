@@ -6,10 +6,13 @@ import dotenv
 dotenv.load_dotenv()
 
 API_KEY = os.environ.get("PD_API_TOKEN")
-TEAM_ID = "P527OXV"  # Replace with your actual team ID
+TEAM_ID = os.environ.get("PD_TEAM_ID")  # Get team ID from environment variable
 
 if not API_KEY:
     API_KEY = input("Enter your PagerDuty API key: ")
+
+if not TEAM_ID:
+    TEAM_ID = input("Enter your PagerDuty team ID: ")
 
 headers = {
     "Authorization": f"Token token={API_KEY}",
@@ -19,7 +22,7 @@ headers = {
 
 # Fetch team members
 team_members_url = f"https://api.pagerduty.com/teams/{TEAM_ID}/members"
-response = requests.get(team_members_url, headers=headers)
+response = requests.get(team_members_url, headers=headers, timeout=30)
 response.raise_for_status()
 members = response.json().get("members", [])
 
@@ -45,7 +48,7 @@ for idx, member in enumerate(members):
     if new_role and new_role != current_role:
         patch_url = f"https://api.pagerduty.com/teams/{TEAM_ID}/members/{user_id}"
         payload = {"role": new_role}
-        patch_resp = requests.patch(patch_url, headers=headers, json=payload)
+        patch_resp = requests.patch(patch_url, headers=headers, json=payload, timeout=30)
         if patch_resp.status_code == 200:
             print(f"Updated {user_summary} to role '{new_role}'.")
         else:

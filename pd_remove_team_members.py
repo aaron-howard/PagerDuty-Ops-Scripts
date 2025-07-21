@@ -7,10 +7,13 @@ import json
 dotenv.load_dotenv()
 
 API_KEY = os.environ.get("PD_API_TOKEN")
-TEAM_ID = "P527OXV"  # Replace with your actual team ID
+TEAM_ID = os.environ.get("PD_TEAM_ID")  # Get team ID from environment variable
 
 if not API_KEY:
     API_KEY = input("Enter your PagerDuty API key: ")
+
+if not TEAM_ID:
+    TEAM_ID = input("Enter your PagerDuty team ID: ")
 
 headers = {
     "Authorization": f"Token token={API_KEY}",
@@ -20,7 +23,7 @@ headers = {
 def get_schedule_details(schedule_id):
     """Get details about a specific schedule including layers and users."""
     url = f"https://api.pagerduty.com/schedules/{schedule_id}"
-    resp = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json().get("schedule", {})
 
@@ -61,7 +64,7 @@ def remove_user_from_schedule(schedule_id, user_id, user_name):
     }
     
     try:
-        put_resp = requests.put(update_url, headers=headers, json=update_data)
+        put_resp = requests.put(update_url, headers=headers, json=update_data, timeout=30)
         put_resp.raise_for_status()
         print(f"Successfully removed {user_name} from schedule '{schedule_name}'")
         return True
@@ -72,7 +75,7 @@ def remove_user_from_schedule(schedule_id, user_id, user_name):
 def get_escalation_policy_details(policy_id):
     """Get details for a specific escalation policy."""
     url = f"https://api.pagerduty.com/escalation_policies/{policy_id}"
-    resp = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json().get("escalation_policy", {})
 
@@ -110,7 +113,7 @@ def remove_user_from_escalation_policy(policy_id, user_id, user_name):
     }
     
     try:
-        put_resp = requests.put(update_url, headers=headers, json=update_data)
+        put_resp = requests.put(update_url, headers=headers, json=update_data, timeout=30)
         put_resp.raise_for_status()
         print(f"Successfully removed {user_name} from policy '{policy_name}'")
         return True
@@ -120,19 +123,19 @@ def remove_user_from_escalation_policy(policy_id, user_id, user_name):
 
 # Fetch team members
 team_members_url = f"https://api.pagerduty.com/teams/{TEAM_ID}/members"
-response = requests.get(team_members_url, headers=headers)
+response = requests.get(team_members_url, headers=headers, timeout=30)
 response.raise_for_status()
 members = response.json().get("members", [])
 
 # Fetch team schedules
 schedules_url = f"https://api.pagerduty.com/schedules?team_ids[]={TEAM_ID.strip()}"
-schedules_resp = requests.get(schedules_url, headers=headers)
+schedules_resp = requests.get(schedules_url, headers=headers, timeout=30)
 schedules_resp.raise_for_status()
 schedules = schedules_resp.json().get("schedules", [])
 
 # Fetch team escalation policies
 escalation_policies_url = f"https://api.pagerduty.com/escalation_policies?team_ids[]={TEAM_ID.strip()}"
-escalation_policies_resp = requests.get(escalation_policies_url, headers=headers)
+escalation_policies_resp = requests.get(escalation_policies_url, headers=headers, timeout=30)
 escalation_policies_resp.raise_for_status()
 escalation_policies = escalation_policies_resp.json().get("escalation_policies", [])
 
@@ -145,7 +148,7 @@ for schedule in schedules:
     schedule_id = schedule.get("id")
     schedule_name = schedule.get("summary", "Unknown")
     users_url = f"https://api.pagerduty.com/schedules/{schedule_id}/users"
-    users_resp = requests.get(users_url, headers=headers)
+    users_resp = requests.get(users_url, headers=headers, timeout=30)
     users_resp.raise_for_status()
     users = users_resp.json().get("users", [])
     
@@ -238,7 +241,7 @@ for idx, member in enumerate(members):
         # Finally remove from team
         print(f"\nRemoving {user_summary} from team...")
         remove_url = f"https://api.pagerduty.com/teams/{TEAM_ID}/members/{user_id}"
-        del_resp = requests.delete(remove_url, headers=headers)
+        del_resp = requests.delete(remove_url, headers=headers, timeout=30)
         if del_resp.status_code == 204:
             print(f"Successfully removed {user_summary} from team.")
         else:

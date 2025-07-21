@@ -11,6 +11,7 @@ import os
 import sys
 import argparse
 import json
+import getpass
 import dotenv
 dotenv.load_dotenv()
 
@@ -27,7 +28,7 @@ def get_pd_api_token():
     """Get PagerDuty API token from environment variable or user input."""
     token = os.environ.get('PD_API_TOKEN')
     if not token:
-        token = input("Enter your PagerDuty API token: ")
+        token = getpass.getpass("Enter your PagerDuty API token: ")
     return token
 
 def make_api_request(endpoint, token, method='GET', params=None, data=None):
@@ -42,9 +43,9 @@ def make_api_request(endpoint, token, method='GET', params=None, data=None):
     url = f"{base_url}/{endpoint}"
     try:
         if method == 'GET':
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(url, headers=headers, params=params, timeout=30)
         elif method == 'PUT':
-            response = requests.put(url, headers=headers, json=data)
+            response = requests.put(url, headers=headers, json=data, timeout=30)
         else:
             print(f"Error: Unsupported method {method}")
             return None

@@ -16,6 +16,7 @@ import argparse
 from datetime import datetime
 import csv
 import io
+import getpass
 import dotenv
 dotenv.load_dotenv()
 
@@ -32,7 +33,7 @@ def get_pd_api_token():
     """Get PagerDuty API token from environment variable or user input."""
     token = os.environ.get('PD_API_TOKEN')
     if not token:
-        token = input("Enter your PagerDuty API token: ")
+        token = getpass.getpass("Enter your PagerDuty API token: ")
     return token
 
 def make_api_request(endpoint, token, params=None):
@@ -46,7 +47,7 @@ def make_api_request(endpoint, token, params=None):
 
     url = f"{base_url}/{endpoint}"
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=headers, params=params, timeout=30)
         response.raise_for_status()
     except requests.RequestException as e:
         print(f"Error: API request failed - {e}")
@@ -122,10 +123,6 @@ def generate_output(teams, schedules, escalation_policies, services, webhooks, f
 
     # Map webhooks to teams via services
     team_webhooks = {}
-    service_team_map = {service['id']: service.get('teams', []) for service in services}
-    # ... (rest of your code above remains unchanged)
-
-    # Map webhooks to teams via services    team_webhooks = {}
     service_team_map = {service['id']: service.get('teams', []) for service in services}
     for webhook in webhooks:
         # Extract service ID from webhook data structure

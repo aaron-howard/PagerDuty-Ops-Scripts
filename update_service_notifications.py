@@ -1,5 +1,6 @@
 import os
 import requests
+import sys
 from dotenv import load_dotenv
 
 # Load environment variables from .env if present
@@ -16,7 +17,7 @@ def get_all_services():
     services = []
     url = PD_API_URL
     while url:
-        resp = requests.get(url, headers=HEADERS)
+        resp = requests.get(url, headers=HEADERS, timeout=30)
         resp.raise_for_status()
         data = resp.json()
         services.extend(data.get("services", []))
@@ -44,14 +45,14 @@ def update_service_urgency_rule(service):
             "incident_urgency_rule": incident_urgency_rule
         }
     }
-    resp = requests.put(f"{PD_API_URL}/{service_id}", headers=HEADERS, json=payload)
+    resp = requests.put(f"{PD_API_URL}/{service_id}", headers=HEADERS, json=payload, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
 if __name__ == "__main__":
     if not PD_API_TOKEN:
         print("PagerDuty API token not found. Please set PD_API_TOKEN in your environment or .env file.")
-        exit(1)
+        sys.exit(1)
 
     print("Fetching all services...")
     services = get_all_services()
