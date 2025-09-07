@@ -1,0 +1,68 @@
+name: PagerDuty Scripts Demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Demo - Export IDs (Mock)
+      run: |
+        echo "=== PagerDuty Scripts Demo ==="
+        echo "This demo shows the structure and capabilities of the PagerDuty operations scripts."
+        echo ""
+        echo "Available scripts:"
+        echo "• pd_export_ids.py - Export teams, schedules, services, and webhooks"
+        echo "• pd_update_service_names.py - Update service names with 'SVC' suffix"
+        echo "• pd_update_schedule_names.py - Update schedule names with 'SCH' suffix"
+        echo "• pd_update_escalation_policy_names.py - Update policy names with 'EP' suffix"
+        echo "• pd_get_teams_user_role.py - List team members and roles"
+        echo "• pd_update_team_roles.py - Interactive role management"
+        echo "• pd_remove_team_members.py - Remove team members"
+        echo "• update_service_notifications.py - Update notification settings"
+        echo ""
+        echo "To use these scripts in production:"
+        echo "1. Set PD_API_TOKEN environment variable"
+        echo "2. Set PD_TEAM_ID for team-specific operations"
+        echo "3. Run scripts with appropriate parameters"
+        echo ""
+        echo "Example usage:"
+        echo "python pd_export_ids.py --format table"
+        echo "python pd_update_service_names.py --dry-run --list"
+    
+    - name: Test Script Syntax
+      run: |
+        echo "Testing script syntax..."
+        python -m py_compile pd_export_ids.py
+        python -m py_compile pd_update_service_names.py
+        python -m py_compile pd_update_schedule_names.py
+        python -m py_compile pd_update_escalation_policy_names.py
+        python -m py_compile pd_get_teams_user_role.py
+        python -m py_compile pd_update_team_roles.py
+        python -m py_compile pd_remove_team_members.py
+        python -m py_compile update_service_notifications.py
+        python -m py_compile demo_sample_output.py
+        echo "✅ All scripts have valid syntax"
+    
+    - name: Run Demo with Sample Data
+      run: |
+        echo "Running demo with sample data..."
+        python demo_sample_output.py
