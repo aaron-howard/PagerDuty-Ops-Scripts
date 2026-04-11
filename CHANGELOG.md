@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- **Documentation:** README adds a CLI tools table, default config filenames, `get_paginated` usage, testing/integration notes, and aligns feature bullets with current behavior; GitHub bug report template targets Python/CLI issues.
+
 ## [1.1.0] - 2026-04-11
 
 ### Changed

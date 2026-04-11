@@ -7,6 +7,7 @@ Python **operations toolkit** for PagerDuty: a small `pagerduty` client library,
 - [Features](#features)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Command-line tools](#command-line-tools)
 - [Usage](#usage)
   - [Basic Usage](#basic-usage)
   - [API Client](#api-client)
@@ -27,8 +28,9 @@ Python **operations toolkit** for PagerDuty: a small `pagerduty` client library,
 ✅ **Error handling & retries** - Custom exceptions, rate-limit and transport retries  
 ✅ **Structured logging** - JSON logs with credential redaction patterns  
 ✅ **Configuration** - YAML/JSON files and `PD_*` environment variables  
-✅ **CLI ergonomics** - `pagerduty-ops` umbrella command and `pd-*` entry points  
-✅ **Pagination** - `limit` / `offset` + `more` for standard v2 collection envelopes (extend mappings as needed)  
+✅ **CLI ergonomics** - `pagerduty-ops` umbrella command and dedicated `pd-*` / `update-service-notifications` entry points  
+✅ **Progress feedback** - TTY spinner during long list loads (`pagerduty.cli_common.progress_wait`); **`--no-progress`** on operational CLIs to disable it  
+✅ **Pagination** - `PagerDutyAPIClient.get_paginated` walks `limit` / `offset` + `more` for standard v2 collection envelopes; optional **`items_key`**, mapped keys via `_get_items_key`, and a safety cap (`MAX_PAGINATION_ITERATIONS`) if `more` never clears  
 ✅ **Type hints** - Typed for static checking (Python 3.10+)
 
 ## Installation
@@ -72,7 +74,11 @@ export PD_API_VERSION="v2"
 
 ### 2. Configuration File
 
-Create a `.pagerduty.yaml` file:
+Create a YAML or JSON file in the working directory. Unless you pass **`--config PATH`** on a CLI (which resets the lazy default), the first match among these names is loaded (see `pagerduty.config.Config.DEFAULT_CONFIG_FILES`):
+
+`.pagerduty.yaml`, `.pagerduty.yml`, `.pagerduty.json`, `pagerduty.yaml`, `pagerduty.yml`, `pagerduty.json`
+
+Example (`.pagerduty.yaml`):
 
 ```yaml
 api_token: "your_api_token_here"
@@ -119,6 +125,34 @@ Importing the `pagerduty` package does **not** read config files from disk until
 **`pd-update-team-roles`** and **`pd-remove-team-members`** support **`--dry-run`** to fetch and display membership/assignment data without interactive prompts or mutating calls. Those two, **`pd-get-teams-user-role`**, and **`pd-patch-role`** accept **`--no-progress`** to hide fetch/spinner output during list loads.
 
 Bulk renames (`pd-update-*-names`) accept **`--no-progress`** to suppress fetch status lines and the spinner.
+
+## Command-line tools
+
+Installed **console scripts** (from `pyproject.toml` `[project.scripts]`):
+
+| Script | Purpose |
+|--------|---------|
+| **`pagerduty-ops`** | Dispatcher: `pagerduty-ops <subcommand> [args…]` (see below) |
+| **`pd-export-ids`** | Export team/schedule/policy/service/webhook IDs (table, CSV, JSON) |
+| **`pd-update-service-names`** | Bulk append `SVC` to service names |
+| **`pd-update-schedule-names`** | Bulk append `SCH` to schedule names |
+| **`pd-update-escalation-policy-names`** | Bulk append `EP` to escalation policy names |
+| **`pd-patch-role`** | Promote `observer` users to `user` |
+| **`pd-update-team-roles`** | Interactive team member role updates |
+| **`pd-get-teams-user-role`** | Tabulate team members and roles |
+| **`pd-remove-team-members`** | Interactive removals (schedules/policies/team) |
+| **`update-service-notifications`** | Set `incident_urgency_rule` to severity-based for services |
+
+**`pagerduty-ops`** subcommands (each delegates to the module in parentheses):
+
+`export-ids` (`pd_export_ids`), `update-service-names`, `update-schedule-names`, `update-escalation-policy-names`, `patch-role`, `update-team-roles`, `get-teams-user-role`, `remove-team-members`, `update-service-notifications`.
+
+Examples:
+
+```bash
+pagerduty-ops export-ids --help
+pd-export-ids --format json --without webhooks
+```
 
 ## Usage
 
@@ -174,6 +208,13 @@ try:
 
 except Exception as e:
     print(f"API Error: {str(e)}")
+```
+
+**Paginated index endpoints** (standard v2 `limit` / `offset` / `more` envelope):
+
+```python
+# Merge all pages (optional items_key if the list field is not in the default map)
+all_teams = client.get_paginated("teams", {"limit": 100})
 ```
 
 ### Resources
@@ -263,6 +304,8 @@ except Exception as e:
 ```
 
 ## Examples
+
+The snippets below show **library usage patterns**. The installed **`pd-export-ids`** CLI adds options such as **`--without`**, **`--concurrency`**, **`--no-progress`**, and richer joining logic; use **`pd-export-ids --help`** for the full interface.
 
 ### Export PagerDuty IDs (Improved Version)
 
@@ -418,7 +461,7 @@ mypy
 pytest
 ```
 
-Optional **live API** regression checks (not run in CI): set **`PAGERDUTY_INTEGRATION_TESTS=1`** and **`PD_API_TOKEN`**, then run **`pytest -m integration`**. Default **`pytest`** skips them.
+**Tests:** Unit tests live under **`tests/`**. Default **`pytest`** skips **`@pytest.mark.integration`** tests. For optional **live API** checks (not run in CI), set **`PAGERDUTY_INTEGRATION_TESTS=1`** (or `true` / `yes`) and **`PD_API_TOKEN`**, then run **`pytest -m integration`**.
 
 ```bash
 python -m pip install pip-audit
@@ -434,7 +477,7 @@ pre-commit run --all-files   # once, to warm caches
 
 CI runs **Gitleaks** (secret scan), **pip-audit** on `requirements.txt`, **Ruff** (`check` + `format --check`), **mypy**, and **pytest** on Python **3.10, 3.11, and 3.12** for pushes and pull requests to `main` / `master` (see `.github/workflows/ci.yml` and `.github/workflows/gitleaks.yml`).
 
-Release-facing changes are summarized in [CHANGELOG.md](CHANGELOG.md). The package version in `pyproject.toml` is the source of truth; `pagerduty.__version__` and the HTTP `User-Agent` read it via `importlib.metadata` when the distribution is installed.
+Release-facing changes are summarized in [CHANGELOG.md](CHANGELOG.md). The package **version** in **`pyproject.toml`** `[project]` is the source of truth; **`pagerduty.__version__`** and the HTTP **`User-Agent`** read it via **`importlib.metadata`** when the distribution is installed.
 
 ### CLI exit codes
 
@@ -465,6 +508,8 @@ Contributions are welcome! Please follow these guidelines:
 3. Add or update tests when you introduce test coverage
 4. Submit a pull request
 
+For defects, use the **Bug report** issue template (Python version, command run, no secrets in the report).
+
 ### Code Standards
 
 - Follow PEP 8 style guide
@@ -476,12 +521,10 @@ Contributions are welcome! Please follow these guidelines:
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. Copyright and full terms are in [LICENSE](LICENSE).
 
 ## Support
 
-For issues, questions, or feature requests, please open an issue on GitHub.
+For issues, questions, or feature requests, open a GitHub issue (use the bug report template for defects).
 
 ---
-
-© 2023 PagerDuty Scripts Team

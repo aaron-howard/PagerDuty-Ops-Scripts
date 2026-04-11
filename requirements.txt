@@ -1,5 +1,6 @@
 # Runtime dependencies: canonical list is pyproject.toml [project.dependencies].
 # Prefer: pip install -e .
+# Releases / history: CHANGELOG.md
 requests>=2.33.0
 urllib3>=2.6.3
 prettytable>=3.9.0
