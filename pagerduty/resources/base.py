@@ -4,7 +4,7 @@ PagerDuty Resource Base Class
 Base class for all PagerDuty resource classes.
 """
 
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, List, Optional
 from ..api_client import PagerDutyAPIClient
 from ..errors import PagerDutyError, NotFoundError
 import logging

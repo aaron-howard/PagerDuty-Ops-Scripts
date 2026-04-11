@@ -1,39 +1,42 @@
-import requests
 import os
+
 from tabulate import tabulate
 import dotenv
 
+from pagerduty import PagerDutyAPIClient
+from pagerduty.resources import TeamsResource
+
 dotenv.load_dotenv()
 
-API_KEY = os.environ.get("PD_API_TOKEN")  # Use .env or environment variable
-TEAM_ID = os.environ.get("PD_TEAM_ID")  # Get team ID from environment variable
 
-if not API_KEY:
-    API_KEY = input("Enter your PagerDuty API key: ")
+def main():
+    api_key = os.environ.get("PD_API_TOKEN")
+    team_id = os.environ.get("PD_TEAM_ID")
 
-if not TEAM_ID:
-    TEAM_ID = input("Enter your PagerDuty team ID: ")
+    if not api_key:
+        api_key = input("Enter your PagerDuty API key: ")
 
-headers = {
-    "Authorization": f"Token token={API_KEY}",
-    "Accept": "application/vnd.pagerduty+json;version=2"
-}
+    if not team_id:
+        team_id = input("Enter your PagerDuty team ID: ")
 
-# Fetch team members
-team_members_url = f"https://api.pagerduty.com/teams/{TEAM_ID}/members"
-response = requests.get(team_members_url, headers=headers, timeout=30)
-response.raise_for_status()
-members = response.json().get("members", [])
+    client = PagerDutyAPIClient(api_token=api_key)
+    try:
+        teams = TeamsResource(client)
+        members = teams.get_members(team_id.strip())
 
-table_data = []
+        table_data = []
+        for member in members:
+            user = member.get("user", {})
+            user_id = user.get("id", "")
+            user_type = user.get("type", "")
+            user_summary = user.get("summary", "")
+            user_role = member.get("role", "")
+            table_data.append([user_id, user_type, user_summary, user_role])
 
-for member in members:
-    user = member.get("user", {})
-    user_id = user.get("id", "")
-    user_type = user.get("type", "")
-    user_summary = user.get("summary", "")
-    user_role = member.get("role", "")  # Role is included in the member object
+        print(tabulate(table_data, headers=["ID", "Type", "Summary", "Role"], tablefmt="github"))
+    finally:
+        client.close()
 
-    table_data.append([user_id, user_type, user_summary, user_role])
 
-print(tabulate(table_data, headers=["ID", "Type", "Summary", "Role"], tablefmt="github"))
+if __name__ == "__main__":
+    main()

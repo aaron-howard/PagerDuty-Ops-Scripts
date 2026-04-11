@@ -4,7 +4,7 @@ PagerDuty Schedules Resource
 Schedules-specific operations and functionality.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional
 from .base import BaseResource
 from ..errors import PagerDutyError
 import logging

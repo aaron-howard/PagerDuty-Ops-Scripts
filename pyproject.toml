@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pagerduty-ops-scripts"
+version = "1.0.0"
+description = "PagerDuty API helpers and operations scripts"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "PyYAML>=6.0.1",
+    "prettytable>=3.9.0",
+    "tabulate>=0.9.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "ruff>=0.4"]
+
+[project.scripts]
+pd-export-ids = "pd_export_ids:main"
+pd-update-service-names = "pd_update_service_names:main"
+pd-update-schedule-names = "pd_update_schedule_names:main"
+pd-update-escalation-policy-names = "pd_update_escalation_policy_names:main"
+pd-patch-role = "pd_patch_role:main"
+pd-update-team-roles = "pd_update_team_roles:main"
+pd-get-teams-user-role = "pd_get_teams_user_role:main"
+pd-remove-team-members = "pd_remove_team_members:main"
+update-service-notifications = "update_service_notifications:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pagerduty*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["venv", ".venv", "python", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+# Public re-exports in package inits are intentional.
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+
+[tool.setuptools]
+py-modules = [
+    "pd_export_ids",
+    "pd_get_teams_user_role",
+    "pd_patch_role",
+    "pd_remove_team_members",
+    "pd_update_escalation_policy_names",
+    "pd_update_schedule_names",
+    "pd_update_service_names",
+    "pd_update_team_roles",
+    "update_service_notifications",
+]

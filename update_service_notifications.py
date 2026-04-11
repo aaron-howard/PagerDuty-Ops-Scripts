@@ -1,70 +1,55 @@
 import os
-import requests
 import sys
+
 from dotenv import load_dotenv
 
-# Load environment variables from .env if present
+from pagerduty import PagerDutyAPIClient
+from pagerduty.resources import ServicesResource
+
 load_dotenv()
-PD_API_TOKEN = os.getenv("PD_API_TOKEN")
-PD_API_URL = "https://api.pagerduty.com/services"
-HEADERS = {
-    "Authorization": f"Token token={PD_API_TOKEN}",
-    "Accept": "application/vnd.pagerduty+json;version=2",
-    "Content-Type": "application/json"
-}
 
-def get_all_services():
-    services = []
-    url = PD_API_URL
-    while url:
-        resp = requests.get(url, headers=HEADERS, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        services.extend(data.get("services", []))
-        if data.get("more"):
-            next_offset = data.get("offset", 0) + data.get("limit", 100)
-            url = f"{PD_API_URL}?offset={next_offset}&limit=100"
-        else:
-            url = None
-    return services
 
-def update_service_urgency_rule(service):
+def update_service_urgency_rule(services_api: ServicesResource, service: dict) -> dict:
     service_id = service["id"]
-    # Set urgency to 'severity_based' for dynamic notifications based on alert severity
     incident_urgency_rule = service.get("incident_urgency_rule", {})
     if not incident_urgency_rule:
         incident_urgency_rule = {
             "type": "constant",
-            "urgency": "severity_based"
+            "urgency": "severity_based",
         }
     else:
+        incident_urgency_rule = dict(incident_urgency_rule)
         incident_urgency_rule["urgency"] = "severity_based"
 
-    payload = {
-        "service": {
-            "incident_urgency_rule": incident_urgency_rule
-        }
-    }
-    resp = requests.put(f"{PD_API_URL}/{service_id}", headers=HEADERS, json=payload, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    return services_api.update(service_id, {"incident_urgency_rule": incident_urgency_rule})
 
-if __name__ == "__main__":
-    if not PD_API_TOKEN:
+
+def main() -> None:
+    pd_api_token = os.getenv("PD_API_TOKEN")
+    if not pd_api_token:
         print("PagerDuty API token not found. Please set PD_API_TOKEN in your environment or .env file.")
         sys.exit(1)
 
-    print("Fetching all services...")
-    services = get_all_services()
-    print(f"Found {len(services)} services.")
+    client = PagerDutyAPIClient(api_token=pd_api_token)
+    try:
+        services_api = ServicesResource(client)
+        print("Fetching all services...")
+        services = services_api.list()
+        print(f"Found {len(services)} services.")
 
-    for service in services:
-        service_id = service["id"]
-        print(f"Updating incident_urgency_rule for service {service['name']} ({service_id})...")
-        try:
-            update_service_urgency_rule(service)
-            print(f"Service {service['name']} updated.")
-        except Exception as e:
-            print(f"Failed to update service {service['name']} ({service_id}): {e}")
+        for service in services:
+            service_id = service["id"]
+            print(f"Updating incident_urgency_rule for service {service['name']} ({service_id})...")
+            try:
+                update_service_urgency_rule(services_api, service)
+                print(f"Service {service['name']} updated.")
+            except Exception as e:
+                print(f"Failed to update service {service['name']} ({service_id}): {e}")
 
-    print("All service incident_urgency_rule values updated to 'severity_based'.")
+        print("All service incident_urgency_rule values updated to 'severity_based'.")
+    finally:
+        client.close()
+
+
+if __name__ == "__main__":
+    main()

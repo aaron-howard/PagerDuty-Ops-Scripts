@@ -35,29 +35,25 @@ A comprehensive Python package for interacting with PagerDuty APIs, designed to 
 
 ### Prerequisites
 
-- Python 3.7+
-- `requests` library
-- `python-dotenv` for environment variable support
-- `PyYAML` for YAML configuration (optional)
+- Python 3.9+
+- Dependencies are declared in `pyproject.toml` / `requirements.txt` (`requests`, `python-dotenv`, `PyYAML`, `prettytable`, `tabulate`)
 
 ### Install from source
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/pagerduty-python-sdk.git
-cd pagerduty-python-sdk
+git clone <your-fork-or-clone-url>
+cd PagerDuty-Ops-Scripts
 
-# Install the package
+# Editable install (includes the pagerduty package and CLI entry points)
 pip install -e .
-
-# Install dependencies
-pip install -r requirements.txt
 ```
 
-### Install dependencies
+After installation, CLI commands such as `pd-export-ids` and `pd-update-service-names` are available on your PATH.
+
+### Install dependencies only (no package install)
 
 ```bash
-pip install requests python-dotenv pyyaml prettytable
+pip install -r requirements.txt
 ```
 
 ## Configuration
@@ -101,17 +97,19 @@ config.set("log_level", "DEBUG")
 ### Basic Usage
 
 ```python
-from pagerduty import PagerDutyAPIClient, TeamsResource
+from pagerduty import PagerDutyAPIClient
+from pagerduty.resources import TeamsResource
 
-# Initialize API client
+# Initialize API client (reads PD_API_TOKEN from the environment or config files)
 client = PagerDutyAPIClient()
 
 # Get all teams
 teams = TeamsResource(client).list()
 print(f"Found {len(teams)} teams")
 
-# Get a specific team
-team = TeamsResource(client).get("TEAM_ID")
+# Get a specific team (API returns an envelope)
+team_body = TeamsResource(client).get("TEAM_ID")
+team = team_body.get("team", team_body)
 print(f"Team: {team['name']}")
 ```
 
@@ -377,25 +375,22 @@ teams = client.get("teams")
 
 ## Development
 
-### Running Tests
+Install dev dependencies (pytest, ruff):
 
 ```bash
-# Run all tests
+pip install -e ".[dev]"
+```
+
+Run checks locally:
+
+```bash
+ruff check pagerduty tests
 pytest
-
-# Run specific test
-pytest tests/test_api_client.py
-
-# Run with coverage
-pytest --cov=pagerduty --cov-report=term-missing
 ```
 
-### Building Documentation
+CI runs the same `ruff` and `pytest` steps on pushes and pull requests to `main` / `master` (see `.github/workflows/ci.yml`).
 
-```bash
-# Generate API documentation
-pdoc --html pagerduty --output-dir docs
-```
+To generate API documentation locally, use a tool such as `pdoc` against the `pagerduty` package.
 
 ## Contributing
 
@@ -403,9 +398,8 @@ Contributions are welcome! Please follow these guidelines:
 
 1. Fork the repository
 2. Create a feature branch
-3. Write tests for your changes
+3. Add or update tests when you introduce test coverage
 4. Submit a pull request
-5. Ensure all tests pass
 
 ### Code Standards
 

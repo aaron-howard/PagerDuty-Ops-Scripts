@@ -6,18 +6,25 @@ This script connects to PagerDuty API and exports team IDs/names along with asso
 schedules, escalation policies, services, and webhook subscriptions in table, CSV, or JSON format.
 """
 
-import requests
 import os
 import sys
 import json
-import prettytable
 from prettytable import PrettyTable
 import argparse
-from datetime import datetime
 import csv
 import io
 import getpass
+
 import dotenv
+from pagerduty import PagerDutyAPIClient
+from pagerduty.resources import (
+    EscalationPoliciesResource,
+    SchedulesResource,
+    ServicesResource,
+    TeamsResource,
+    WebhooksResource,
+)
+
 dotenv.load_dotenv()
 
 def parse_arguments():
@@ -35,62 +42,6 @@ def get_pd_api_token():
     if not token:
         token = getpass.getpass("Enter your PagerDuty API token: ")
     return token
-
-def make_api_request(endpoint, token, params=None):
-    """Make a request to the PagerDuty API."""
-    base_url = "https://api.pagerduty.com"
-    headers = {
-        "Accept": "application/vnd.pagerduty+json;version=2",
-        "Authorization": f"Token token={token}",
-        "Content-Type": "application/json"
-    }
-
-    url = f"{base_url}/{endpoint}"
-    try:
-        response = requests.get(url, headers=headers, params=params, timeout=30)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        print(f"Error: API request failed - {e}")
-        return None
-
-    try:
-        return response.json()
-    except Exception as e:
-        print(f"Error decoding JSON: {e}")
-        return None
-
-def get_all_items(token, resource):
-    """Generic function to handle pagination for any resource."""
-    print(f"Fetching {resource}...", end="", flush=True)
-    items = []
-    offset = 0
-    limit = 100
-    while True:
-        params = {"limit": limit, "offset": offset}
-        data = make_api_request(resource, token, params)
-        if not data or resource not in data:
-            break
-        items.extend(data[resource])
-        if not data.get("more"):
-            break
-        offset += limit
-    print(f" Found {len(items)} {resource}.")
-    return items
-
-def get_all_teams(token):
-    return get_all_items(token, "teams")
-
-def get_all_schedules(token):
-    return get_all_items(token, "schedules")
-
-def get_all_escalation_policies(token):
-    return get_all_items(token, "escalation_policies")
-
-def get_all_services(token):
-    return get_all_items(token, "services")
-
-def get_all_webhook_subscriptions(token):
-    return get_all_items(token, "webhook_subscriptions")
 
 def generate_output(teams, schedules, escalation_policies, services, webhooks, format_type):
     """Generate output based on the specified format."""
@@ -225,12 +176,25 @@ def main():
         print("Error: No API token provided.")
         sys.exit(1)
 
-    # Get all data from PagerDuty
-    teams = get_all_teams(token)
-    schedules = get_all_schedules(token)
-    escalation_policies = get_all_escalation_policies(token)
-    services = get_all_services(token)
-    webhooks = get_all_webhook_subscriptions(token)
+    client = PagerDutyAPIClient(api_token=token)
+    try:
+        print("Fetching teams...", end="", flush=True)
+        teams = TeamsResource(client).list()
+        print(f" Found {len(teams)} teams.")
+        print("Fetching schedules...", end="", flush=True)
+        schedules = SchedulesResource(client).list()
+        print(f" Found {len(schedules)} schedules.")
+        print("Fetching escalation_policies...", end="", flush=True)
+        escalation_policies = EscalationPoliciesResource(client).list()
+        print(f" Found {len(escalation_policies)} escalation_policies.")
+        print("Fetching services...", end="", flush=True)
+        services = ServicesResource(client).list()
+        print(f" Found {len(services)} services.")
+        print("Fetching webhook_subscriptions...", end="", flush=True)
+        webhooks = WebhooksResource(client).list()
+        print(f" Found {len(webhooks)} webhook_subscriptions.")
+    finally:
+        client.close()
 
     # Generate output
     output = generate_output(teams, schedules, escalation_policies, services, webhooks, args.format)

@@ -8,8 +8,8 @@ import logging
 import logging.handlers
 import json
 import os
-from typing import Optional, Dict, Any
-from datetime import datetime
+from typing import Optional, Any
+from datetime import datetime, timezone
 
 class PagerDutyFormatter(logging.Formatter):
     """Custom formatter for PagerDuty logs."""
@@ -17,7 +17,7 @@ class PagerDutyFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record with additional context."""
         log_data = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             'level': record.levelname,
             'message': record.getMessage(),
             'logger': record.name,

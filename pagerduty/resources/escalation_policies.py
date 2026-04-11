@@ -4,7 +4,7 @@ PagerDuty Escalation Policies Resource
 Escalation policies-specific operations and functionality.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, List
 from .base import BaseResource
 from ..errors import PagerDutyError
 import logging

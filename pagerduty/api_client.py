@@ -7,10 +7,10 @@ Core API client for interacting with PagerDuty REST APIs.
 import requests
 import time
 import json
-from typing import Dict, Any, Optional, Union, List
+from typing import Dict, Any, Optional, List
 from urllib.parse import urljoin
 import logging
-from .errors import APIError, AuthError, RateLimitError, NotFoundError
+from .errors import APIError, AuthError, NotFoundError, PagerDutyError, RateLimitError
 from .logging import log_api_request
 from .config import config
 
@@ -46,17 +46,15 @@ class PagerDutyAPIClient:
             max_retries: Maximum number of retries for failed requests
             user_agent: Custom user agent string
         """
-        self.api_token = api_token or config.get('api_token')
+        self.api_token = api_token if api_token is not None else config.get("api_token")
         self.base_url = base_url or config.get('base_url', self.DEFAULT_BASE_URL)
         self.api_version = api_version
         self.timeout = timeout
         self.max_retries = max_retries
         self.user_agent = user_agent or f"pagerduty-python-sdk/{config.get('version', '1.0.0')}"
 
-        if not self.api_token:
+        if not isinstance(self.api_token, str) or not self.api_token.strip():
             raise AuthError("API token is required")
-
-        self._validate_api_token()
 
         # Set up session
         self.session = requests.Session()
@@ -73,11 +71,6 @@ class PagerDutyAPIClient:
             "User-Agent": self.user_agent
         }
 
-    def _validate_api_token(self) -> None:
-        """Validate API token format."""
-        if not isinstance(self.api_token, str) or len(self.api_token) < 20:
-            raise AuthError("Invalid API token format")
-
     def _handle_response(self, response: requests.Response) -> Any:
         """Handle API response and raise appropriate exceptions."""
         try:
@@ -92,13 +85,23 @@ class PagerDutyAPIClient:
 
             # Check for not found errors
             if response.status_code == 404:
-                raise NotFoundError("Resource not found")
+                raise NotFoundError("resource")
 
             # Check for other errors
             if response.status_code >= 400:
-                error_data = response.json() if response.text else {}
-                error_msg = error_data.get('error', {}).get('message', response.text)
-                raise APIError(error_msg, status_code=response.status_code, response=response.json())
+                error_data: Any = {}
+                error_msg = response.text or ""
+                if response.text:
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get("error", {}).get("message", response.text)
+                    except json.JSONDecodeError:
+                        pass
+                raise APIError(
+                    error_msg,
+                    status_code=response.status_code,
+                    response=error_data if error_data else None,
+                )
 
             # Return JSON response if available
             return response.json() if response.text else {}
@@ -168,8 +171,11 @@ class PagerDutyAPIClient:
                 return self._make_request(method, endpoint, params, data, json_data, retry_count + 1)
             raise
 
-        except (requests.RequestException, APIError) as e:
-            if retry_count < self.max_retries and isinstance(e, requests.RequestException):
+        except PagerDutyError:
+            raise
+
+        except requests.RequestException as e:
+            if retry_count < self.max_retries:
                 logger.warning(f"Request failed. Retrying ({retry_count + 1}/{self.max_retries})...")
                 time.sleep(2 ** retry_count)  # Exponential backoff
                 return self._make_request(method, endpoint, params, data, json_data, retry_count + 1)
@@ -213,7 +219,7 @@ class PagerDutyAPIClient:
 
         while True:
             response = self.get(endpoint, params=current_params)
-            if not response or 'total' not in response:
+            if not response:
                 break
 
             items_key = self._get_items_key(endpoint)
@@ -256,6 +262,3 @@ class PagerDutyAPIClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
-
-# Global API client instance
-api_client = PagerDutyAPIClient()

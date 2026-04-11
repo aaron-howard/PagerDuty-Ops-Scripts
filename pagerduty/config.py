@@ -7,7 +7,7 @@ Configuration management for PagerDuty API interactions.
 import os
 import json
 import yaml
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional
 from pathlib import Path
 import logging
 from .errors import ConfigError
