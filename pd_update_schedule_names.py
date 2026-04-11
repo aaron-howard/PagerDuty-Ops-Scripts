@@ -7,24 +7,32 @@ to the end of schedule names that don't already have it.
 """
 
 import argparse
-import getpass
-import os
-import sys
-
-import dotenv
+from collections.abc import Sequence
 
 from pagerduty import PagerDutyAPIClient
+from pagerduty.cli_common import (
+    add_deprecated_token_argument,
+    add_no_progress_argument,
+    add_standard_cli_options,
+    apply_cli_config_path,
+    apply_log_level_from_args,
+    init_cli_env,
+    parse_argv,
+    progress_wait,
+    resolve_api_token_or_exit,
+    status_line,
+)
 from pagerduty.resources import SchedulesResource
 
-dotenv.load_dotenv()
 
-
-def parse_arguments():
+def parse_arguments(argv: Sequence[str] | None = None):
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description='Update PagerDuty schedule names by appending "SCH".'
     )
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_standard_cli_options(parser)
+    add_deprecated_token_argument(parser)
+    add_no_progress_argument(parser)
     parser.add_argument(
         "-l", "--list", action="store_true", help="List schedules without making changes"
     )
@@ -34,31 +42,24 @@ def parse_arguments():
     parser.add_argument(
         "--dry-run", action="store_true", help="Show what would be done without making changes"
     )
-    return parser.parse_args()
+    return parser.parse_args(parse_argv(argv))
 
 
-def get_pd_api_token():
-    """Get PagerDuty API token from environment variable or user input."""
-    token = os.environ.get("PD_API_TOKEN")
-    if not token:
-        token = getpass.getpass("Enter your PagerDuty API token: ")
-    return token
-
-
-def get_all_schedules(schedules_api: SchedulesResource, name_filter=None):
+def get_all_schedules(schedules_api: SchedulesResource, name_filter, args: argparse.Namespace):
     """Get all schedules from PagerDuty, with optional filtering by name."""
-    print("Fetching schedules...", end="", flush=True)
-    all_schedules = schedules_api.list()
+    with progress_wait(args, "Fetching schedules..."):
+        all_schedules = schedules_api.list()
     if name_filter:
         nf = name_filter.lower()
         schedules = [s for s in all_schedules if nf in s.get("name", "").lower()]
-        print(
-            f" Found {len(schedules)} schedules matching filter '{name_filter}' "
-            f"(of {len(all_schedules)} total)."
+        status_line(
+            args,
+            f"Found {len(schedules)} schedules matching filter '{name_filter}' "
+            f"(of {len(all_schedules)} total).",
         )
     else:
         schedules = all_schedules
-        print(f" Found {len(schedules)} schedules.")
+        status_line(args, f"Found {len(schedules)} schedules.")
     return schedules
 
 
@@ -89,19 +90,18 @@ def update_schedule_name(
     return False
 
 
-def main():
+def main(argv: Sequence[str] | None = None):
     """Main function to run the script."""
-    args = parse_arguments()
-
-    token = args.token if args.token else get_pd_api_token()
-    if not token:
-        print("Error: No API token provided.")
-        sys.exit(1)
+    init_cli_env()
+    args = parse_arguments(argv)
+    apply_cli_config_path(args)
+    apply_log_level_from_args(args)
+    token = resolve_api_token_or_exit(args.token)
 
     client = PagerDutyAPIClient(api_token=token)
     try:
         schedules_api = SchedulesResource(client)
-        schedules = get_all_schedules(schedules_api, args.filter)
+        schedules = get_all_schedules(schedules_api, args.filter, args)
 
         if args.list:
             print("\nCurrent Schedules:")

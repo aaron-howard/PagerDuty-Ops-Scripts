@@ -6,7 +6,6 @@ Base class for all PagerDuty resource classes.
 
 import builtins
 import logging
-from typing import Optional
 
 from ..api_client import PagerDutyAPIClient
 from ..errors import NotFoundError, PagerDutyError
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 class BaseResource:
     """Base class for PagerDuty resources."""
 
-    def __init__(self, api_client: Optional[PagerDutyAPIClient] = None):
+    def __init__(self, api_client: PagerDutyAPIClient | None = None):
         """
         Initialize resource.
 
@@ -28,7 +27,7 @@ class BaseResource:
         self.resource_name = self.__class__.__name__.replace("Resource", "").lower()
         self.endpoint = f"{self.resource_name}s"
 
-    def get(self, resource_id: str, params: Optional[dict] = None) -> dict:
+    def get(self, resource_id: str, params: dict | None = None) -> dict:
         """
         Get a single resource by ID.
 
@@ -52,7 +51,7 @@ class BaseResource:
             logger.error(f"Failed to get {self.resource_name}: {str(e)}")
             raise PagerDutyError(f"Failed to get {self.resource_name}: {str(e)}") from e
 
-    def list(self, params: Optional[dict] = None) -> list[dict]:
+    def list(self, params: dict | None = None) -> list[dict]:
         """
         List all resources.
 
@@ -120,7 +119,7 @@ class BaseResource:
             logger.error(f"Failed to delete {self.resource_name} {resource_id}: {str(e)}")
             raise PagerDutyError(f"Failed to delete {self.resource_name}: {str(e)}") from e
 
-    def get_by_name(self, name: str) -> Optional[dict]:
+    def get_by_name(self, name: str) -> dict | None:
         """
         Get resource by name.
 
@@ -140,7 +139,7 @@ class BaseResource:
             logger.error(f"Failed to get {self.resource_name} by name: {str(e)}")
             return None
 
-    def search(self, query: str, params: Optional[dict] = None) -> builtins.list[dict]:
+    def search(self, query: str, params: dict | None = None) -> builtins.list[dict]:
         """
         Search resources by query.
 

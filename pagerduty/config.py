@@ -8,7 +8,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -30,7 +30,7 @@ class Config:
         "pagerduty.json",
     ]
 
-    def __init__(self, config_file: Optional[str] = None, env_prefix: str = "PD"):
+    def __init__(self, config_file: str | None = None, env_prefix: str = "PD"):
         """
         Initialize configuration manager.
 
@@ -164,7 +164,7 @@ class Config:
         # Set the final value
         current[keys[-1]] = value
 
-    def validate(self, required_keys: Optional[list] = None) -> bool:
+    def validate(self, required_keys: list | None = None) -> bool:
         """
         Validate configuration.
 
@@ -191,7 +191,7 @@ class Config:
         return self._config.copy()
 
 
-def load_config(config_file: Optional[str] = None) -> Config:
+def load_config(config_file: str | None = None) -> Config:
     """
     Load and return configuration.
 
@@ -201,10 +201,63 @@ def load_config(config_file: Optional[str] = None) -> Config:
     Returns:
         Configured Config instance
     """
-    config = Config(config_file)
-    config.load()
-    return config
+    cfg = Config(config_file)
+    cfg.load()
+    return cfg
 
 
-# Global configuration instance
-config = load_config()
+# Lazy process-wide defaults (no disk/env read until first use).
+_default_singleton: Config | None = None
+_override_config_file: str | None = None
+
+
+def configure_default_config_file(config_file: str | None) -> None:
+    """
+    Set the config file path used by get_config() / the module-level `config` proxy.
+
+    Resets the cached singleton so the next access loads fresh. Call before any API
+    client uses default config, typically right after parsing ``--config``.
+    """
+    global _default_singleton, _override_config_file
+    _override_config_file = config_file
+    _default_singleton = None
+
+
+def get_config() -> Config:
+    """Return the process-wide default Config, loading it on first access."""
+    global _default_singleton
+    if _default_singleton is None:
+        _default_singleton = Config(config_file=_override_config_file)
+        _default_singleton.load()
+    return _default_singleton
+
+
+def reset_default_config_for_testing() -> None:
+    """Clear cached default config (tests only)."""
+    global _default_singleton, _override_config_file
+    _default_singleton = None
+    _override_config_file = None
+
+
+class _LazyConfigProxy:
+    """Forwards to get_config() so ``from pagerduty.config import config`` stays lazy."""
+
+    __slots__ = ()
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return get_config().get(key, default)
+
+    def set(self, key: str, value: Any) -> None:
+        get_config().set(key, value)
+
+    def load(self) -> None:
+        get_config().load()
+
+    def validate(self, required_keys: list | None = None) -> bool:
+        return get_config().validate(required_keys)
+
+    def to_dict(self) -> dict[str, Any]:
+        return get_config().to_dict()
+
+
+config = _LazyConfigProxy()

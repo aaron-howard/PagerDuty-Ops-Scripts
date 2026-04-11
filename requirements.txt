@@ -1,4 +1,7 @@
-requests>=2.31.0
+# Runtime dependencies: canonical list is pyproject.toml [project.dependencies].
+# Prefer: pip install -e .
+requests>=2.33.0
+urllib3>=2.6.3
 prettytable>=3.9.0
 python-dotenv>=1.0.0
 tabulate>=0.9.0

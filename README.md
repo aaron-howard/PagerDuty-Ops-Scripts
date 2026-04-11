@@ -1,6 +1,6 @@
-# PagerDuty Python SDK
+# PagerDuty Ops Scripts
 
-A comprehensive Python package for interacting with PagerDuty APIs, designed to improve security, error handling, logging, and code organization across all PagerDuty operations scripts.
+Python **operations toolkit** for PagerDuty: a small `pagerduty` client library, focused resource helpers, and CLI scripts for bulk/admin tasks. It is **not** a full coverage SDK for every PagerDuty REST endpoint—extend the client and `resources` package when you need more surface area.
 
 ## Table of Contents
 
@@ -17,26 +17,26 @@ A comprehensive Python package for interacting with PagerDuty APIs, designed to 
 - [Migration Guide](#migration-guide)
 - [Development](#development)
 - [Contributing](#contributing)
+- [Changelog](CHANGELOG.md)
 - [License](#license)
 
 ## Features
 
-✅ **Comprehensive API Coverage** - Full support for PagerDuty REST API
-✅ **Secure Token Handling** - Safe API token management and validation
-✅ **Robust Error Handling** - Custom exceptions and retry logic
-✅ **Structured Logging** - JSON logging with sensitive data masking
-✅ **Flexible Configuration** - YAML/JSON files and environment variables
-✅ **Modular Architecture** - Clean separation of concerns
-✅ **Pagination Support** - Automatic handling of paginated responses
-✅ **Type Hints** - Full type annotation support
-✅ **Resource-Oriented** - Intuitive resource-based interface
+✅ **Targeted API helpers** - REST client plus resource modules for teams, users, services, schedules, escalation policies, and webhooks used by this repo’s scripts  
+✅ **Secure token handling** - Prefer env/config; optional CLI token with warnings  
+✅ **Error handling & retries** - Custom exceptions, rate-limit and transport retries  
+✅ **Structured logging** - JSON logs with credential redaction patterns  
+✅ **Configuration** - YAML/JSON files and `PD_*` environment variables  
+✅ **CLI ergonomics** - `pagerduty-ops` umbrella command and `pd-*` entry points  
+✅ **Pagination** - `limit` / `offset` + `more` for standard v2 collection envelopes (extend mappings as needed)  
+✅ **Type hints** - Typed for static checking (Python 3.10+)
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.9+
-- Dependencies are declared in `pyproject.toml` / `requirements.txt` (`requests`, `python-dotenv`, `PyYAML`, `prettytable`, `tabulate`)
+- Python **3.10+** (required for modern typing syntax used in this codebase)
+- Dependencies are declared in `pyproject.toml` / `requirements.txt` (`requests`, `urllib3`, `python-dotenv`, `PyYAML`, `prettytable`, `tabulate`)
 
 ### Install from source
 
@@ -48,9 +48,11 @@ cd PagerDuty-Ops-Scripts
 pip install -e .
 ```
 
-After installation, CLI commands such as `pd-export-ids` and `pd-update-service-names` are available on your PATH.
+After installation, use **`pagerduty-ops`** for a single entry point with subcommands (for example `pagerduty-ops export-ids --help`), or call the dedicated scripts directly (`pd-export-ids`, `pd-update-service-names`, and others on your PATH).
 
 ### Install dependencies only (no package install)
+
+Runtime dependencies are listed in `pyproject.toml` under `[project.dependencies]`. `requirements.txt` mirrors them for convenience:
 
 ```bash
 pip install -r requirements.txt
@@ -91,6 +93,32 @@ config = Config()
 config.set("api_token", "your_api_token")
 config.set("log_level", "DEBUG")
 ```
+
+### 4. Command-line scripts
+
+Installed entry points (`pd-export-ids`, `pd-update-service-names`, etc.) share a common pattern:
+
+- **`--config PATH`** — load settings from that YAML/JSON file (overrides the default filename search).
+- **`-v` / `--verbose`** and **`-q` / `--quiet`** — adjust log verbosity.
+- **`-t` / `--token`** — optional API token. Prefer **`PD_API_TOKEN`** or an **`api_token`** entry in a config file; tokens passed on the command line can appear in shell history.
+
+Resolution order for the token: `-t` (emits a stderr warning), then `PD_API_TOKEN`, then `api_token` from the merged config, then a secure prompt where the script allows it.
+
+With **`-v` / `--verbose`**, the `urllib3` and **`requests`** loggers stay at **WARNING** so low-level HTTP debug output (which can include headers) is not enabled. To allow full library debugging, set environment variable **`PAGERDUTY_ALLOW_HTTP_LIBRARY_DEBUG=1`**.
+
+The `PagerDutyAPIClient` records **method, endpoint path, status, and timing** via `log_api_request`—not request or response bodies.
+
+JSON log lines from `pagerduty.logging` apply **redaction** for common credential patterns (for example `Token token=…`, `Bearer …`, and `api_token=…`).
+
+Importing the `pagerduty` package does **not** read config files from disk until something needs them (for example creating `PagerDutyAPIClient()` without an explicit token, or calling `get_config()` / `config.get()`).
+
+**`pd-export-ids`** accepts **`--without RESOURCE [RESOURCE …]`** to skip fetching schedules, escalation policies, services, or webhooks when you only need part of the export (fewer API calls). Skipping **services** limits webhook-to-team association in the output. Use **`--concurrency N`** (with `N>1`) to fetch multiple resource lists in parallel (each worker uses its own HTTP session). **`--no-progress`** hides fetch status lines and the interactive spinner.
+
+**`update-service-notifications`** supports **`--dry-run`** (list services that would change) and **`--no-progress`**. **`pd-patch-role`** supports **`--dry-run`** to list observers that would be promoted, and **`--no-progress`** to hide the user-list spinner.
+
+**`pd-update-team-roles`** and **`pd-remove-team-members`** support **`--dry-run`** to fetch and display membership/assignment data without interactive prompts or mutating calls. Those two, **`pd-get-teams-user-role`**, and **`pd-patch-role`** accept **`--no-progress`** to hide fetch/spinner output during list loads.
+
+Bulk renames (`pd-update-*-names`) accept **`--no-progress`** to suppress fetch status lines and the spinner.
 
 ## Usage
 
@@ -375,7 +403,7 @@ teams = client.get("teams")
 
 ## Development
 
-Install dev dependencies (pytest, ruff, mypy, pre-commit, typing stubs):
+Install dev dependencies (pytest, ruff, mypy, pre-commit, tomli for tests, typing stubs):
 
 ```bash
 pip install -e ".[dev]"
@@ -390,6 +418,13 @@ mypy
 pytest
 ```
 
+Optional **live API** regression checks (not run in CI): set **`PAGERDUTY_INTEGRATION_TESTS=1`** and **`PD_API_TOKEN`**, then run **`pytest -m integration`**. Default **`pytest`** skips them.
+
+```bash
+python -m pip install pip-audit
+pip-audit -r requirements.txt
+```
+
 Optional: install Git hooks so Ruff and mypy run on every commit:
 
 ```bash
@@ -397,9 +432,27 @@ pre-commit install
 pre-commit run --all-files   # once, to warm caches
 ```
 
-CI runs Ruff (`check` + `format --check`), **mypy**, and **pytest** on pushes and pull requests to `main` / `master` (see `.github/workflows/ci.yml`).
+CI runs **Gitleaks** (secret scan), **pip-audit** on `requirements.txt`, **Ruff** (`check` + `format --check`), **mypy**, and **pytest** on Python **3.10, 3.11, and 3.12** for pushes and pull requests to `main` / `master` (see `.github/workflows/ci.yml` and `.github/workflows/gitleaks.yml`).
 
-**Dependabot** opens weekly PRs for pip dependencies and monthly PRs for GitHub Actions (see `.github/dependabot.yml`).
+Release-facing changes are summarized in [CHANGELOG.md](CHANGELOG.md). The package version in `pyproject.toml` is the source of truth; `pagerduty.__version__` and the HTTP `User-Agent` read it via `importlib.metadata` when the distribution is installed.
+
+### CLI exit codes
+
+Scripts and `pagerduty-ops` follow a common convention (and `argparse` still exits **2** on parse errors):
+
+| Code | Meaning |
+|------|--------|
+| **0** | Success |
+| **1** | Operational error (for example missing API token, API failure, I/O error) |
+| **2** | Usage / invalid arguments (for example unknown `pagerduty-ops` subcommand, invalid flag values after parse) |
+
+Constants: `pagerduty.cli_common.EXIT_SUCCESS`, `EXIT_ERROR`, `EXIT_USAGE`.
+
+### requirements.txt
+
+Runtime dependency names and constraints are defined in **`pyproject.toml`** (`[project.dependencies]`). `requirements.txt` is kept in sync for `pip install -r` workflows; CI runs a test that fails if the two lists diverge.
+
+**Dependabot** opens weekly PRs for pip and monthly PRs for GitHub Actions, with **grouped updates** (fewer PRs per ecosystem; see `.github/dependabot.yml`).
 
 To generate API documentation locally, use a tool such as `pdoc` against the `pagerduty` package.
 

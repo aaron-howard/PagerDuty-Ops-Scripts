@@ -8,16 +8,29 @@ schedules, escalation policies, services, and webhook subscriptions in table, CS
 
 import argparse
 import csv
-import getpass
 import io
 import json
-import os
 import sys
+from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import dotenv
 from prettytable import PrettyTable
 
 from pagerduty import PagerDutyAPIClient
+from pagerduty.cli_common import (
+    EXIT_USAGE,
+    add_deprecated_token_argument,
+    add_no_progress_argument,
+    add_standard_cli_options,
+    apply_cli_config_path,
+    apply_log_level_from_args,
+    init_cli_env,
+    parse_argv,
+    progress_wait,
+    resolve_api_token_or_exit,
+    show_progress,
+    status_line,
+)
 from pagerduty.resources import (
     EscalationPoliciesResource,
     SchedulesResource,
@@ -26,15 +39,22 @@ from pagerduty.resources import (
     WebhooksResource,
 )
 
-dotenv.load_dotenv()
+_SKIP_RESOURCES = (
+    "schedules",
+    "escalation_policies",
+    "services",
+    "webhooks",
+)
 
 
-def parse_arguments():
+def parse_arguments(argv: Sequence[str] | None = None):
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Export PagerDuty IDs and names for various objects."
     )
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_standard_cli_options(parser)
+    add_deprecated_token_argument(parser)
+    add_no_progress_argument(parser)
     parser.add_argument(
         "-o", "--output", help="Output file for results (default is to display on screen)"
     )
@@ -45,15 +65,47 @@ def parse_arguments():
         default="table",
         help="Output format (default: table)",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--without",
+        nargs="+",
+        choices=_SKIP_RESOURCES,
+        default=None,
+        metavar="RESOURCE",
+        help=(
+            "Skip fetching these resources to reduce API calls (teams are always fetched). "
+            f"One or more of: {', '.join(_SKIP_RESOURCES)}."
+        ),
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "Parallel fetches for list endpoints when N>1 (separate HTTP session per worker). "
+            "Ignored when only one resource is fetched."
+        ),
+    )
+    return parser.parse_args(parse_argv(argv))
 
 
-def get_pd_api_token():
-    """Get PagerDuty API token from environment variable or user input."""
-    token = os.environ.get("PD_API_TOKEN")
-    if not token:
-        token = getpass.getpass("Enter your PagerDuty API token: ")
-    return token
+def _fetch_resource_list(resource: str, token: str) -> tuple[str, list[dict]]:
+    """One list() call with its own client (thread-safe)."""
+    client = PagerDutyAPIClient(api_token=token)
+    try:
+        if resource == "teams":
+            return resource, TeamsResource(client).list()
+        if resource == "schedules":
+            return resource, SchedulesResource(client).list()
+        if resource == "escalation_policies":
+            return resource, EscalationPoliciesResource(client).list()
+        if resource == "services":
+            return resource, ServicesResource(client).list()
+        if resource == "webhooks":
+            return resource, WebhooksResource(client).list()
+        raise ValueError(f"unknown resource: {resource}")
+    finally:
+        client.close()
 
 
 def generate_output(teams, schedules, escalation_policies, services, webhooks, format_type):
@@ -193,40 +245,92 @@ def generate_output(teams, schedules, escalation_policies, services, webhooks, f
         return output.getvalue()
 
 
-def main():
+def main(argv: Sequence[str] | None = None):
     """Main function to run the script."""
-    args = parse_arguments()
+    init_cli_env()
+    args = parse_arguments(argv)
+    apply_cli_config_path(args)
+    apply_log_level_from_args(args)
+    token = resolve_api_token_or_exit(args.token)
 
-    # Get API token
-    token = args.token if args.token else get_pd_api_token()
-    if not token:
-        print("Error: No API token provided.")
-        sys.exit(1)
+    if args.concurrency < 1:
+        print("Error: --concurrency must be >= 1.", file=sys.stderr)
+        sys.exit(EXIT_USAGE)
 
-    client = PagerDutyAPIClient(api_token=token)
-    try:
-        print("Fetching teams...", end="", flush=True)
-        teams = TeamsResource(client).list()
-        print(f" Found {len(teams)} teams.")
-        print("Fetching schedules...", end="", flush=True)
-        schedules = SchedulesResource(client).list()
-        print(f" Found {len(schedules)} schedules.")
-        print("Fetching escalation_policies...", end="", flush=True)
-        escalation_policies = EscalationPoliciesResource(client).list()
-        print(f" Found {len(escalation_policies)} escalation_policies.")
-        print("Fetching services...", end="", flush=True)
-        services = ServicesResource(client).list()
-        print(f" Found {len(services)} services.")
-        print("Fetching webhook_subscriptions...", end="", flush=True)
-        webhooks = WebhooksResource(client).list()
-        print(f" Found {len(webhooks)} webhook_subscriptions.")
-    finally:
-        client.close()
+    skip = set(args.without or [])
 
-    # Generate output
+    fetch_order = ["teams"]
+    for name in _SKIP_RESOURCES:
+        if name not in skip:
+            fetch_order.append(name)
+
+    if len(fetch_order) > 1 and args.concurrency > 1:
+        workers = min(args.concurrency, len(fetch_order))
+        results: dict[str, list] = {}
+        with progress_wait(
+            args,
+            f"Fetching {len(fetch_order)} resources ({workers} parallel workers)...",
+        ):
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures = {
+                    pool.submit(_fetch_resource_list, name, token): name for name in fetch_order
+                }
+                for fut in as_completed(futures):
+                    key, items = fut.result()
+                    results[key] = items
+        if show_progress(args):
+            for name in fetch_order:
+                print(f"  {name}: {len(results[name])}")
+        teams = results["teams"]
+        schedules = results.get("schedules", [])
+        escalation_policies = results.get("escalation_policies", [])
+        services = results.get("services", [])
+        webhooks = results.get("webhooks", [])
+    else:
+        client = PagerDutyAPIClient(api_token=token)
+        try:
+            with progress_wait(args, "Fetching teams..."):
+                teams = TeamsResource(client).list()
+            status_line(args, f"Found {len(teams)} teams.")
+
+            if "schedules" in skip:
+                schedules = []
+                status_line(args, "Skipping schedules fetch (--without schedules).")
+            else:
+                with progress_wait(args, "Fetching schedules..."):
+                    schedules = SchedulesResource(client).list()
+                status_line(args, f"Found {len(schedules)} schedules.")
+
+            if "escalation_policies" in skip:
+                escalation_policies = []
+                status_line(
+                    args, "Skipping escalation_policies fetch (--without escalation_policies)."
+                )
+            else:
+                with progress_wait(args, "Fetching escalation_policies..."):
+                    escalation_policies = EscalationPoliciesResource(client).list()
+                status_line(args, f"Found {len(escalation_policies)} escalation_policies.")
+
+            if "services" in skip:
+                services = []
+                status_line(args, "Skipping services fetch (--without services).")
+            else:
+                with progress_wait(args, "Fetching services..."):
+                    services = ServicesResource(client).list()
+                status_line(args, f"Found {len(services)} services.")
+
+            if "webhooks" in skip:
+                webhooks = []
+                status_line(args, "Skipping webhook_subscriptions fetch (--without webhooks).")
+            else:
+                with progress_wait(args, "Fetching webhook_subscriptions..."):
+                    webhooks = WebhooksResource(client).list()
+                status_line(args, f"Found {len(webhooks)} webhook_subscriptions.")
+        finally:
+            client.close()
+
     output = generate_output(teams, schedules, escalation_policies, services, webhooks, args.format)
 
-    # Output to file or stdout
     try:
         if args.output:
             with open(args.output, "w", encoding="utf-8") as f:

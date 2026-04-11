@@ -5,7 +5,6 @@ Schedules-specific operations and functionality.
 """
 
 import logging
-from typing import Optional
 
 from ..errors import PagerDutyError
 from .base import BaseResource
@@ -37,7 +36,7 @@ class SchedulesResource(BaseResource):
             logger.error(f"Failed to get users for schedule {schedule_id}: {str(e)}")
             raise PagerDutyError(f"Failed to get schedule users: {str(e)}") from e
 
-    def get_oncalls(self, schedule_id: str, params: Optional[dict] = None) -> list[dict]:
+    def get_oncalls(self, schedule_id: str, params: dict | None = None) -> list[dict]:
         """
         Get schedule on-calls.
 

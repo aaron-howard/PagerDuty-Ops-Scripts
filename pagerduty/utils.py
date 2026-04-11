@@ -8,7 +8,7 @@ import csv
 import io
 import json
 import logging
-from typing import Any, Optional, Union
+from typing import Any
 
 from prettytable import PrettyTable
 
@@ -41,8 +41,8 @@ def validate_pagerduty_id(pd_id: str, id_type: str = "ID") -> bool:
 
 
 def format_output(
-    data: list[dict], format_type: str = "table", field_names: Optional[list[str]] = None
-) -> Union[str, PrettyTable]:
+    data: list[dict], format_type: str = "table", field_names: list[str] | None = None
+) -> str | PrettyTable:
     """
     Format data for output in various formats.
 
@@ -145,7 +145,7 @@ def set_nested_value(data: dict, key_path: str, value: Any) -> None:
     current[keys[-1]] = value
 
 
-def mask_sensitive_data(data: Any, sensitive_keys: Optional[list[str]] = None) -> Any:
+def mask_sensitive_data(data: Any, sensitive_keys: list[str] | None = None) -> Any:
     """
     Mask sensitive data in dictionaries or strings.
 

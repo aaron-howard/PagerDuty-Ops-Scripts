@@ -1,14 +1,27 @@
 """
-PagerDuty Python SDK
-
-A comprehensive Python package for interacting with PagerDuty APIs.
+PagerDuty operations toolkit — HTTP client, config, and resource helpers for admin scripts.
 """
 
+from ._meta import distribution_version
 from .api_client import PagerDutyAPIClient
-from .config import Config, load_config
+from .config import Config, configure_default_config_file, get_config, load_config
 from .errors import APIError, AuthError, ConfigError, PagerDutyError
 from .logging import setup_logging
 
-__version__ = "1.0.0"
+__all__ = [
+    "APIError",
+    "AuthError",
+    "Config",
+    "ConfigError",
+    "PagerDutyAPIClient",
+    "PagerDutyError",
+    "__version__",
+    "configure_default_config_file",
+    "get_config",
+    "load_config",
+    "setup_logging",
+]
+
+__version__ = distribution_version()
 __author__ = "PagerDuty Scripts Team"
 __license__ = "MIT"

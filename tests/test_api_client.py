@@ -132,6 +132,46 @@ class TestGetPaginated:
         assert captured_params[1]["offset"] == 100
         assert captured_params[1]["limit"] == 100
 
+    def test_explicit_items_key_used(self, client):
+        page1 = {"widgets": [{"id": "1"}], "more": True}
+        page2 = {"widgets": [{"id": "2"}], "more": False}
+        calls: list[dict] = []
+
+        def fake_get(endpoint, params=None):
+            calls.append(dict(params or {}))
+            return page1 if len(calls) == 1 else page2
+
+        with patch.object(client, "get", side_effect=fake_get):
+            result = client.get_paginated("custom/things", items_key="widgets")
+
+        assert [item["id"] for item in result] == ["1", "2"]
+        assert len(calls) == 2
+
+    def test_non_list_envelope_stops_pagination(self, client):
+        def fake_get(endpoint, params=None):
+            return {"teams": {"not": "a list"}, "more": False}
+
+        with patch.object(client, "get", side_effect=fake_get):
+            assert client.get_paginated("teams") == []
+
+    def test_unmapped_endpoint_returns_empty_without_crash(self, client):
+        def fake_get(endpoint, params=None):
+            return {"records": [{"id": "z"}], "more": False}
+
+        with patch.object(client, "get", side_effect=fake_get):
+            assert client.get_paginated("unknown_collection") == []
+
+    def test_stuck_more_raises_after_max_iterations(self, client):
+        def fake_get(endpoint, params=None):
+            return {"teams": [{"id": "same"}], "more": True}
+
+        with (
+            patch.object(PagerDutyAPIClient, "MAX_PAGINATION_ITERATIONS", 3),
+            patch.object(client, "get", side_effect=fake_get),
+        ):
+            with pytest.raises(APIError, match="Pagination stopped"):
+                client.get_paginated("teams")
+
 
 class TestValidateToken:
     def test_empty_token_raises(self):

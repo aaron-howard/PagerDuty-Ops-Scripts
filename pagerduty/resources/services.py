@@ -5,7 +5,6 @@ Services-specific operations and functionality.
 """
 
 import logging
-from typing import Optional
 
 from ..errors import PagerDutyError
 from .base import BaseResource
@@ -57,7 +56,7 @@ class ServicesResource(BaseResource):
             logger.error(f"Failed to create integration for service {service_id}: {str(e)}")
             raise PagerDutyError(f"Failed to create service integration: {str(e)}") from e
 
-    def get_incidents(self, service_id: str, params: Optional[dict] = None) -> list[dict]:
+    def get_incidents(self, service_id: str, params: dict | None = None) -> list[dict]:
         """
         Get service incidents.
 

@@ -1,29 +1,58 @@
+import argparse
 import os
+from collections.abc import Sequence
 
-import dotenv
 from tabulate import tabulate
 
 from pagerduty import PagerDutyAPIClient
+from pagerduty.cli_common import (
+    add_deprecated_token_argument,
+    add_no_progress_argument,
+    add_standard_cli_options,
+    apply_cli_config_path,
+    apply_log_level_from_args,
+    init_cli_env,
+    parse_argv,
+    progress_wait,
+    resolve_api_token_or_exit,
+)
 from pagerduty.resources import TeamsResource
 
-dotenv.load_dotenv()
+
+def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Interactively update team member roles for a PagerDuty team."
+    )
+    add_standard_cli_options(parser)
+    add_deprecated_token_argument(parser)
+    add_no_progress_argument(parser)
+    parser.add_argument(
+        "--team-id",
+        help="Team ID (default: PD_TEAM_ID environment variable, else prompt)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="List members and stop before any interactive role prompts or API updates",
+    )
+    return parser.parse_args(parse_argv(argv))
 
 
-def main():
-    api_key = os.environ.get("PD_API_TOKEN")
-    team_id = os.environ.get("PD_TEAM_ID")
-
-    if not api_key:
-        api_key = input("Enter your PagerDuty API key: ")
-
+def main(argv: Sequence[str] | None = None):
+    init_cli_env()
+    args = parse_arguments(argv)
+    apply_cli_config_path(args)
+    apply_log_level_from_args(args)
+    token = resolve_api_token_or_exit(args.token)
+    team_id = (args.team_id or os.environ.get("PD_TEAM_ID") or "").strip()
     if not team_id:
-        team_id = input("Enter your PagerDuty team ID: ")
+        team_id = input("Enter your PagerDuty team ID: ").strip()
 
-    team_id = team_id.strip()
-    client = PagerDutyAPIClient(api_token=api_key)
+    client = PagerDutyAPIClient(api_token=token)
     try:
         teams = TeamsResource(client)
-        members = teams.get_members(team_id)
+        with progress_wait(args, "Fetching team members..."):
+            members = teams.get_members(team_id)
 
         table_data = []
         for idx, member in enumerate(members):
@@ -37,6 +66,13 @@ def main():
         print(
             tabulate(table_data, headers=["#", "ID", "Type", "Summary", "Role"], tablefmt="github")
         )
+
+        if args.dry_run:
+            print(
+                "\nDry run: no prompts or role updates. "
+                "Re-run without --dry-run to change roles interactively."
+            )
+            return
 
         for idx, member in enumerate(members):
             user = member.get("user", {})

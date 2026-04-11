@@ -1,12 +1,41 @@
+import argparse
 import os
+from collections.abc import Sequence
 
-import dotenv
 from tabulate import tabulate
 
 from pagerduty import PagerDutyAPIClient
+from pagerduty.cli_common import (
+    add_deprecated_token_argument,
+    add_no_progress_argument,
+    add_standard_cli_options,
+    apply_cli_config_path,
+    apply_log_level_from_args,
+    init_cli_env,
+    parse_argv,
+    progress_wait,
+    resolve_api_token_or_exit,
+)
 from pagerduty.resources import SchedulesResource, TeamsResource
 
-dotenv.load_dotenv()
+
+def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Interactively remove members from a PagerDuty team (and related assignments)."
+    )
+    add_standard_cli_options(parser)
+    add_deprecated_token_argument(parser)
+    add_no_progress_argument(parser)
+    parser.add_argument(
+        "--team-id",
+        help="Team ID (default: PD_TEAM_ID environment variable, else prompt)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show members and schedule/policy assignments only; no removal prompts or API writes",
+    )
+    return parser.parse_args(parse_argv(argv))
 
 
 def get_schedule_details(client: PagerDutyAPIClient, schedule_id: str) -> dict:
@@ -94,51 +123,62 @@ def remove_user_from_escalation_policy(
         return False
 
 
-def main():
-    api_key = os.environ.get("PD_API_TOKEN")
-    team_id = os.environ.get("PD_TEAM_ID")
-
-    if not api_key:
-        api_key = input("Enter your PagerDuty API key: ")
-
+def main(argv: Sequence[str] | None = None):
+    init_cli_env()
+    args = parse_arguments(argv)
+    apply_cli_config_path(args)
+    apply_log_level_from_args(args)
+    token = resolve_api_token_or_exit(args.token)
+    team_id = (args.team_id or os.environ.get("PD_TEAM_ID") or "").strip()
     if not team_id:
-        team_id = input("Enter your PagerDuty team ID: ")
+        team_id = input("Enter your PagerDuty team ID: ").strip()
 
-    team_id = team_id.strip()
-    client = PagerDutyAPIClient(api_token=api_key)
+    client = PagerDutyAPIClient(api_token=token)
     try:
         teams_api = TeamsResource(client)
         schedules_api = SchedulesResource(client)
 
-        members = teams_api.get_members(team_id)
-        schedules = teams_api.get_schedules(team_id)
-        escalation_policies = teams_api.get_escalation_policies(team_id)
+        with progress_wait(
+            args,
+            "Loading team members, schedules, and escalation assignments...",
+        ):
+            members = teams_api.get_members(team_id)
+            schedules = teams_api.get_schedules(team_id)
+            escalation_policies = teams_api.get_escalation_policies(team_id)
 
-        user_schedules = {}
-        user_policies = {}
+            user_schedules: dict[str, list[dict[str, str]]] = {}
+            user_policies: dict[str, list[dict[str, str]]] = {}
 
-        for schedule in schedules:
-            schedule_id = schedule.get("id")
-            schedule_name = schedule.get("summary", "Unknown")
-            users = schedules_api.get_users(schedule_id)
-            for user in users:
-                uid = user.get("id")
-                if uid not in user_schedules:
-                    user_schedules[uid] = []
-                user_schedules[uid].append({"id": schedule_id, "name": schedule_name})
+            for schedule in schedules:
+                schedule_id = schedule.get("id")
+                if not schedule_id:
+                    continue
+                schedule_name = schedule.get("summary", "Unknown")
+                users = schedules_api.get_users(schedule_id)
+                for user in users:
+                    uid = user.get("id")
+                    if not uid:
+                        continue
+                    if uid not in user_schedules:
+                        user_schedules[uid] = []
+                    user_schedules[uid].append({"id": schedule_id, "name": schedule_name})
 
-        for policy in escalation_policies:
-            policy_id = policy.get("id")
-            policy_name = policy.get("summary", "Unknown")
-            policy_detail = get_escalation_policy_details(client, policy_id)
-            for rule in policy_detail.get("escalation_rules", []):
-                for target in rule.get("targets", []):
-                    if target.get("type") == "user":
-                        uid = target.get("id")
-                        if uid not in user_policies:
-                            user_policies[uid] = []
-                        if not any(p["id"] == policy_id for p in user_policies.get(uid, [])):
-                            user_policies[uid].append({"id": policy_id, "name": policy_name})
+            for policy in escalation_policies:
+                policy_id = policy.get("id")
+                if not policy_id:
+                    continue
+                policy_name = policy.get("summary", "Unknown")
+                policy_detail = get_escalation_policy_details(client, policy_id)
+                for rule in policy_detail.get("escalation_rules", []):
+                    for target in rule.get("targets", []):
+                        if target.get("type") == "user":
+                            uid = target.get("id")
+                            if not uid:
+                                continue
+                            if uid not in user_policies:
+                                user_policies[uid] = []
+                            if not any(p["id"] == policy_id for p in user_policies.get(uid, [])):
+                                user_policies[uid].append({"id": policy_id, "name": policy_name})
 
         table_data = []
         for idx, member in enumerate(members):
@@ -167,6 +207,13 @@ def main():
             )
         )
         print("\n")
+
+        if args.dry_run:
+            print(
+                "Dry run: no removal prompts or API changes. "
+                "Re-run without --dry-run to remove members interactively."
+            )
+            return
 
         for idx, member in enumerate(members):
             user = member.get("user", {})

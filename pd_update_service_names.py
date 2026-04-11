@@ -7,24 +7,32 @@ to the end of each service name if it doesn't already end with "SVC".
 """
 
 import argparse
-import getpass
-import os
-import sys
-
-import dotenv
+from collections.abc import Sequence
 
 from pagerduty import PagerDutyAPIClient
+from pagerduty.cli_common import (
+    add_deprecated_token_argument,
+    add_no_progress_argument,
+    add_standard_cli_options,
+    apply_cli_config_path,
+    apply_log_level_from_args,
+    init_cli_env,
+    parse_argv,
+    progress_wait,
+    resolve_api_token_or_exit,
+    status_line,
+)
 from pagerduty.resources import ServicesResource
 
-dotenv.load_dotenv()
 
-
-def parse_arguments():
+def parse_arguments(argv: Sequence[str] | None = None):
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description='Update PagerDuty service names by appending "SVC".'
     )
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_standard_cli_options(parser)
+    add_deprecated_token_argument(parser)
+    add_no_progress_argument(parser)
     parser.add_argument(
         "-d",
         "--dry-run",
@@ -39,28 +47,23 @@ def parse_arguments():
         "--filter",
         help="Filter services by name (only update services containing this string)",
     )
-    return parser.parse_args()
+    return parser.parse_args(parse_argv(argv))
 
 
-def get_pd_api_token():
-    """Get PagerDuty API token from environment variable or user input."""
-    token = os.environ.get("PD_API_TOKEN")
-    if not token:
-        token = getpass.getpass("Enter your PagerDuty API token: ")
-    return token
-
-
-def get_all_services(services_api: ServicesResource, name_filter=None):
+def get_all_services(services_api: ServicesResource, name_filter, args: argparse.Namespace):
     """Get all services from PagerDuty with optional name filtering."""
-    print("Fetching services...", end="", flush=True)
-    all_svcs = services_api.list()
+    with progress_wait(args, "Fetching services..."):
+        all_svcs = services_api.list()
     if name_filter:
         nf = name_filter.lower()
         services = [s for s in all_svcs if nf in s.get("name", "").lower()]
-        print(f" Found {len(services)} services matching filter (of {len(all_svcs)} total).")
+        status_line(
+            args,
+            f"Found {len(services)} services matching filter (of {len(all_svcs)} total).",
+        )
     else:
         services = all_svcs
-        print(f" Found {len(services)} services.")
+        status_line(args, f"Found {len(services)} services.")
     return services
 
 
@@ -75,19 +78,18 @@ def update_service_name(services_api: ServicesResource, service_id, new_name, dr
     return True
 
 
-def main():
+def main(argv: Sequence[str] | None = None):
     """Main function to run the script."""
-    args = parse_arguments()
-
-    token = args.token if args.token else get_pd_api_token()
-    if not token:
-        print("Error: No API token provided.")
-        sys.exit(1)
+    init_cli_env()
+    args = parse_arguments(argv)
+    apply_cli_config_path(args)
+    apply_log_level_from_args(args)
+    token = resolve_api_token_or_exit(args.token)
 
     client = PagerDutyAPIClient(api_token=token)
     try:
         services_api = ServicesResource(client)
-        services = get_all_services(services_api, args.filter)
+        services = get_all_services(services_api, args.filter, args)
 
         if args.list:
             print("\nCurrent Services:")

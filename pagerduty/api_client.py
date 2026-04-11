@@ -7,12 +7,13 @@ Core API client for interacting with PagerDuty REST APIs.
 import json
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urljoin
 
 import requests
 
-from .config import config
+from ._meta import distribution_version
+from .config import get_config
 from .errors import APIError, AuthError, NotFoundError, PagerDutyError, RateLimitError
 from .logging import log_api_request
 
@@ -28,15 +29,17 @@ class PagerDutyAPIClient:
     DEFAULT_TIMEOUT = 30
     MAX_RETRIES = 3
     RATE_LIMIT_RETRY_AFTER = 60  # seconds
+    # Guard against buggy or non-v2 collection responses that never clear ``more``.
+    MAX_PAGINATION_ITERATIONS = 10_000
 
     def __init__(
         self,
-        api_token: Optional[str] = None,
-        base_url: Optional[str] = None,
+        api_token: str | None = None,
+        base_url: str | None = None,
         api_version: str = DEFAULT_API_VERSION,
         timeout: int = DEFAULT_TIMEOUT,
         max_retries: int = MAX_RETRIES,
-        user_agent: Optional[str] = None,
+        user_agent: str | None = None,
     ):
         """
         Initialize PagerDuty API Client.
@@ -49,12 +52,13 @@ class PagerDutyAPIClient:
             max_retries: Maximum number of retries for failed requests
             user_agent: Custom user agent string
         """
-        self.api_token = api_token if api_token is not None else config.get("api_token")
-        self.base_url = base_url or config.get("base_url", self.DEFAULT_BASE_URL)
+        cfg = get_config()
+        self.api_token = api_token if api_token is not None else cfg.get("api_token")
+        self.base_url = base_url or cfg.get("base_url", self.DEFAULT_BASE_URL)
         self.api_version = api_version
         self.timeout = timeout
         self.max_retries = max_retries
-        self.user_agent = user_agent or f"pagerduty-python-sdk/{config.get('version', '1.0.0')}"
+        self.user_agent = user_agent or (f"pagerduty-ops-scripts/{distribution_version()}")
 
         if not isinstance(self.api_token, str) or not self.api_token.strip():
             raise AuthError("API token is required")
@@ -117,9 +121,9 @@ class PagerDutyAPIClient:
         self,
         method: str,
         endpoint: str,
-        params: Optional[dict] = None,
-        data: Optional[dict] = None,
-        json_data: Optional[dict] = None,
+        params: dict | None = None,
+        data: dict | None = None,
+        json_data: dict | None = None,
         retry_count: int = 0,
     ) -> Any:
         """
@@ -185,56 +189,89 @@ class PagerDutyAPIClient:
                 )
             raise APIError(f"API request failed: {str(e)}") from e
 
-    def get(self, endpoint: str, params: Optional[dict] = None) -> Any:
+    def get(self, endpoint: str, params: dict | None = None) -> Any:
         """Make GET request."""
         return self._make_request("GET", endpoint, params=params)
 
-    def post(
-        self, endpoint: str, data: Optional[dict] = None, json_data: Optional[dict] = None
-    ) -> Any:
+    def post(self, endpoint: str, data: dict | None = None, json_data: dict | None = None) -> Any:
         """Make POST request."""
         return self._make_request("POST", endpoint, data=data, json_data=json_data)
 
-    def put(
-        self, endpoint: str, data: Optional[dict] = None, json_data: Optional[dict] = None
-    ) -> Any:
+    def put(self, endpoint: str, data: dict | None = None, json_data: dict | None = None) -> Any:
         """Make PUT request."""
         return self._make_request("PUT", endpoint, data=data, json_data=json_data)
 
-    def patch(
-        self, endpoint: str, data: Optional[dict] = None, json_data: Optional[dict] = None
-    ) -> Any:
+    def patch(self, endpoint: str, data: dict | None = None, json_data: dict | None = None) -> Any:
         """Make PATCH request."""
         return self._make_request("PATCH", endpoint, data=data, json_data=json_data)
 
-    def delete(self, endpoint: str, params: Optional[dict] = None) -> Any:
+    def delete(self, endpoint: str, params: dict | None = None) -> Any:
         """Make DELETE request."""
         return self._make_request("DELETE", endpoint, params=params)
 
-    def get_paginated(self, endpoint: str, params: Optional[dict] = None) -> list[dict]:
+    def get_paginated(
+        self,
+        endpoint: str,
+        params: dict | None = None,
+        *,
+        items_key: str | None = None,
+    ) -> list[dict]:
         """
-        Get all items from a paginated endpoint.
+        Walk a PagerDuty REST API v2 **collection** using ``limit`` / ``offset`` and the ``more`` flag.
+
+        This matches the common index pattern for resources such as ``teams``, ``users``, and
+        ``services`` (see PagerDuty REST API docs on pagination). Custom or nested paths may
+        use a different JSON envelope; pass *items_key* to select the list field explicitly, or
+        extend :meth:`_get_items_key` for new first-path segments.
 
         Args:
-            endpoint: API endpoint
-            params: Query parameters
+            endpoint: API endpoint path (for example ``"teams"``).
+            params: Optional query parameters (``limit`` / ``offset`` default to 100 / 0).
+            items_key: JSON key holding the page of objects (defaults to :meth:`_get_items_key`).
 
         Returns:
-            List of all items from all pages
+            Merged list of resource objects from every page.
+
+        Raises:
+            APIError: If pagination exceeds :attr:`MAX_PAGINATION_ITERATIONS` (stuck ``more`` loop).
         """
-        all_items = []
+        all_items: list[dict] = []
         current_params = params.copy() if params else {}
         current_params.setdefault("limit", 100)
         current_params.setdefault("offset", 0)
 
+        iterations = 0
         while True:
+            iterations += 1
+            if iterations > self.MAX_PAGINATION_ITERATIONS:
+                raise APIError(
+                    f"Pagination stopped after {self.MAX_PAGINATION_ITERATIONS} pages "
+                    f"({endpoint!r}); check API response shape or ``more`` flag."
+                )
+
             response = self.get(endpoint, params=current_params)
             if not response:
                 break
 
-            items_key = self._get_items_key(endpoint)
-            if items_key and items_key in response:
-                all_items.extend(response[items_key])
+            resolved_key = items_key if items_key is not None else self._get_items_key(endpoint)
+            if not resolved_key:
+                logger.warning(
+                    "No list envelope key for endpoint %r; stopping after first page.",
+                    endpoint,
+                )
+                break
+            if resolved_key in response:
+                page = response[resolved_key]
+                if isinstance(page, list):
+                    all_items.extend(page)
+                else:
+                    logger.warning(
+                        "Expected list at key %r for %r, got %s; stopping pagination.",
+                        resolved_key,
+                        endpoint,
+                        type(page).__name__,
+                    )
+                    break
 
             if not response.get("more", False):
                 break
@@ -244,7 +281,7 @@ class PagerDutyAPIClient:
         logger.info(f"Retrieved {len(all_items)} items from {endpoint}")
         return all_items
 
-    def _get_items_key(self, endpoint: str) -> Optional[str]:
+    def _get_items_key(self, endpoint: str) -> str | None:
         """Get the key for items in paginated responses based on endpoint."""
         endpoint_mapping = {
             "teams": "teams",

@@ -1,7 +1,9 @@
 """
-PagerDuty Logging Module
+PagerDuty logging helpers.
 
-Centralized logging configuration and utilities.
+The API client logs only method, endpoint path, status, and timing—not request or response
+bodies. Third-party HTTP libraries are kept at WARNING when scripts use ``-v`` unless
+``PAGERDUTY_ALLOW_HTTP_LIBRARY_DEBUG`` is set (see ``pagerduty.cli_common``).
 """
 
 import json
@@ -9,7 +11,9 @@ import logging
 import logging.handlers
 import os
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
+
+from .redaction import redact_log_text
 
 
 class PagerDutyFormatter(logging.Formatter):
@@ -20,12 +24,12 @@ class PagerDutyFormatter(logging.Formatter):
         log_data = {
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "level": record.levelname,
-            "message": record.getMessage(),
+            "message": redact_log_text(record.getMessage()),
             "logger": record.name,
         }
 
         if record.exc_info:
-            log_data["exception"] = self.formatException(record.exc_info)
+            log_data["exception"] = redact_log_text(self.formatException(record.exc_info))
 
         if hasattr(record, "request_id"):
             log_data["request_id"] = record.request_id
@@ -37,24 +41,24 @@ class PagerDutyFormatter(logging.Formatter):
 
 
 class MaskingFilter(logging.Filter):
-    """Filter to mask sensitive data in logs."""
-
-    SENSITIVE_KEYS = ["token", "api_key", "password", "secret", "access_token"]
+    """Normalize log records so formatted output does not leak credentials."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        """Mask sensitive information in log messages."""
-        original_msg = record.msg
-        if isinstance(original_msg, str):
-            for key in self.SENSITIVE_KEYS:
-                if key in original_msg.lower():
-                    record.msg = original_msg.replace(key, f"{key}_MASKED")
+        try:
+            assembled = record.getMessage()
+        except Exception:
+            return True
+        redacted = redact_log_text(assembled)
+        if redacted != assembled:
+            record.msg = redacted
+            record.args = ()
         return True
 
 
 def setup_logging(
     name: str = "pagerduty",
     level: int = logging.INFO,
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
     max_bytes: int = 10485760,  # 10MB
     backup_count: int = 5,
     console_log: bool = True,
@@ -121,16 +125,10 @@ def log_api_request(
     **kwargs: Any,
 ) -> None:
     """
-    Log API request details.
+    Log a single API round-trip (no bodies).
 
-    Args:
-        logger: Logger instance
-        method: HTTP method
-        endpoint: API endpoint
-        status_code: HTTP status code
-        duration_ms: Request duration in milliseconds
-        success: Whether the request was successful
-        **kwargs: Additional context to log
+    Do not pass request/response payloads here; *endpoint* should be a path or relative
+    URL fragment (for example ``teams``), not a string that embeds secrets.
     """
     extra = {
         "request_id": kwargs.get("request_id"),

@@ -1,0 +1,11 @@
+title = "pagerduty-ops-scripts gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Tests and README contain illustrative (non-production) strings"
+paths = [
+    '''(?:^|/)tests/.*''',
+    '''^README\.md$''',
+]
