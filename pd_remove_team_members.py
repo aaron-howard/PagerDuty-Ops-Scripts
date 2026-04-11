@@ -1,7 +1,7 @@
 import os
 
-from tabulate import tabulate
 import dotenv
+from tabulate import tabulate
 
 from pagerduty import PagerDutyAPIClient
 from pagerduty.resources import SchedulesResource, TeamsResource
@@ -14,7 +14,9 @@ def get_schedule_details(client: PagerDutyAPIClient, schedule_id: str) -> dict:
     return data.get("schedule", {}) if isinstance(data, dict) else {}
 
 
-def remove_user_from_schedule(client: PagerDutyAPIClient, schedule_id: str, user_id: str, user_name: str) -> bool:
+def remove_user_from_schedule(
+    client: PagerDutyAPIClient, schedule_id: str, user_id: str, user_name: str
+) -> bool:
     schedule = get_schedule_details(client, schedule_id)
     schedule_name = schedule.get("summary", "Unknown Schedule")
 
@@ -65,7 +67,8 @@ def remove_user_from_escalation_policy(
             if "targets" in rule:
                 original_length = len(rule["targets"])
                 rule["targets"] = [
-                    t for t in rule["targets"]
+                    t
+                    for t in rule["targets"]
                     if not (t.get("type") == "user" and t.get("id") == user_id)
                 ]
                 if len(rule["targets"]) < original_length:
@@ -156,7 +159,13 @@ def main():
             table_data.append([idx, user_id, user_summary, on_schedule, in_policy])
 
         print("\n=== Team Members and Their Assignments ===")
-        print(tabulate(table_data, headers=["#", "User ID", "Name", "On Schedule", "In Escalation Policy"], tablefmt="github"))
+        print(
+            tabulate(
+                table_data,
+                headers=["#", "User ID", "Name", "On Schedule", "In Escalation Policy"],
+                tablefmt="github",
+            )
+        )
         print("\n")
 
         for idx, member in enumerate(members):
@@ -169,7 +178,9 @@ def main():
             if user_id in user_schedules:
                 print(f"On schedules: {', '.join(s['name'] for s in user_schedules[user_id])}")
             if user_id in user_policies:
-                print(f"In escalation policies: {', '.join(p['name'] for p in user_policies[user_id])}")
+                print(
+                    f"In escalation policies: {', '.join(p['name'] for p in user_policies[user_id])}"
+                )
             if user_id not in user_schedules and user_id not in user_policies:
                 print("Not on any schedules or in any escalation policies.")
 
@@ -179,9 +190,13 @@ def main():
                 if user_id in user_schedules:
                     print(f"\nRemoving {user_summary} from schedules first:")
                     for schedule in user_schedules[user_id]:
-                        confirm = input(
-                            f"Remove {user_summary} from schedule '{schedule['name']}'? (y/N): "
-                        ).strip().lower()
+                        confirm = (
+                            input(
+                                f"Remove {user_summary} from schedule '{schedule['name']}'? (y/N): "
+                            )
+                            .strip()
+                            .lower()
+                        )
                         if confirm == "y":
                             remove_user_from_schedule(client, schedule["id"], user_id, user_summary)
                         else:
@@ -190,11 +205,17 @@ def main():
                 if user_id in user_policies:
                     print(f"\nRemoving {user_summary} from escalation policies:")
                     for policy in user_policies[user_id]:
-                        confirm = input(
-                            f"Remove {user_summary} from escalation policy '{policy['name']}'? (y/N): "
-                        ).strip().lower()
+                        confirm = (
+                            input(
+                                f"Remove {user_summary} from escalation policy '{policy['name']}'? (y/N): "
+                            )
+                            .strip()
+                            .lower()
+                        )
                         if confirm == "y":
-                            remove_user_from_escalation_policy(client, policy["id"], user_id, user_summary)
+                            remove_user_from_escalation_policy(
+                                client, policy["id"], user_id, user_summary
+                            )
                         else:
                             print(f"Skipped removing from escalation policy '{policy['name']}'")
 

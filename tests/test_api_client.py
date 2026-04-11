@@ -86,7 +86,9 @@ class TestHandleResponse:
         assert exc_info.value.response == payload
 
     def test_400_non_json_body_uses_raw_text(self, client):
-        resp = _response(400, text="plain error", json_side_effect=json.JSONDecodeError("e", "doc", 0))
+        resp = _response(
+            400, text="plain error", json_side_effect=json.JSONDecodeError("e", "doc", 0)
+        )
         with pytest.raises(APIError) as exc_info:
             client._handle_response(resp)
         assert "plain error" in exc_info.value.message or exc_info.value.message == "plain error"

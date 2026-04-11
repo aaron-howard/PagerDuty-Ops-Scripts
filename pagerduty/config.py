@@ -4,27 +4,30 @@ PagerDuty Configuration Module
 Configuration management for PagerDuty API interactions.
 """
 
-import os
 import json
-import yaml
-from typing import Dict, Any, Optional
-from pathlib import Path
 import logging
+import os
+from pathlib import Path
+from typing import Any, Optional
+
+import yaml
+
 from .errors import ConfigError
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
+
 class Config:
     """Configuration manager for PagerDuty settings."""
 
     DEFAULT_CONFIG_FILES = [
-        '.pagerduty.yaml',
-        '.pagerduty.yml',
-        '.pagerduty.json',
-        'pagerduty.yaml',
-        'pagerduty.yml',
-        'pagerduty.json'
+        ".pagerduty.yaml",
+        ".pagerduty.yml",
+        ".pagerduty.json",
+        "pagerduty.yaml",
+        "pagerduty.yml",
+        "pagerduty.json",
     ]
 
     def __init__(self, config_file: Optional[str] = None, env_prefix: str = "PD"):
@@ -37,7 +40,7 @@ class Config:
         """
         self.config_file = config_file
         self.env_prefix = env_prefix.upper()
-        self._config = {}
+        self._config: dict[str, Any] = {}
         self._loaded = False
 
     def load(self) -> None:
@@ -68,10 +71,10 @@ class Config:
             if not path.exists():
                 raise ConfigError(f"Config file not found: {config_path}")
 
-            with open(config_path, 'r', encoding='utf-8') as f:
-                if path.suffix in ('.yaml', '.yml'):
+            with open(config_path, encoding="utf-8") as f:
+                if path.suffix in (".yaml", ".yml"):
                     self._config = yaml.safe_load(f) or {}
-                elif path.suffix == '.json':
+                elif path.suffix == ".json":
                     self._config = json.load(f)
                 else:
                     raise ConfigError(f"Unsupported config file format: {config_path}")
@@ -88,12 +91,12 @@ class Config:
         for key, value in os.environ.items():
             if key.startswith(self.env_prefix):
                 # Remove prefix and convert to lowercase
-                config_key = key[len(self.env_prefix):].lower()
-                if config_key.startswith('_'):
+                config_key = key[len(self.env_prefix) :].lower()
+                if config_key.startswith("_"):
                     config_key = config_key[1:]
 
                 # Replace underscores with dots for nested config
-                config_key = config_key.replace('_', '.')
+                config_key = config_key.replace("_", ".")
 
                 # Convert value type
                 env_config[config_key] = self._convert_env_value(value)
@@ -106,20 +109,20 @@ class Config:
 
     def _convert_env_value(self, value: str) -> Any:
         """Convert environment variable value to appropriate type."""
-        if value.lower() in ('true', 'yes', 'on', '1'):
+        if value.lower() in ("true", "yes", "on", "1"):
             return True
-        elif value.lower() in ('false', 'no', 'off', '0'):
+        elif value.lower() in ("false", "no", "off", "0"):
             return False
         elif value.isdigit():
             return int(value)
-        elif value.replace('.', '', 1).isdigit() and '.' in value:
+        elif value.replace(".", "", 1).isdigit() and "." in value:
             return float(value)
-        elif value.lower() in ('null', 'none', ''):
+        elif value.lower() in ("null", "none", ""):
             return None
         else:
             return value
 
-    def _deep_merge(self, target: Dict, source: Dict) -> None:
+    def _deep_merge(self, target: dict, source: dict) -> None:
         """Deep merge source dictionary into target."""
         for key, value in source.items():
             if key in target and isinstance(target[key], dict) and isinstance(value, dict):
@@ -133,7 +136,7 @@ class Config:
             self.load()
 
         # Support dot notation for nested keys
-        keys = key.split('.')
+        keys = key.split(".")
         value = self._config
 
         for k in keys:
@@ -149,7 +152,7 @@ class Config:
         if not self._loaded:
             self.load()
 
-        keys = key.split('.')
+        keys = key.split(".")
         current = self._config
 
         # Navigate to the parent of the final key
@@ -181,11 +184,12 @@ class Config:
 
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Get configuration as dictionary."""
         if not self._loaded:
             self.load()
         return self._config.copy()
+
 
 def load_config(config_file: Optional[str] = None) -> Config:
     """
@@ -200,6 +204,7 @@ def load_config(config_file: Optional[str] = None) -> Config:
     config = Config(config_file)
     config.load()
     return config
+
 
 # Global configuration instance
 config = load_config()

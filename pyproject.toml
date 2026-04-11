@@ -18,7 +18,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "ruff>=0.4"]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4",
+    "mypy>=1.8",
+    "pre-commit>=3.5",
+    "types-requests",
+    "types-PyYAML",
+    "types-tabulate",
+]
 
 [project.scripts]
 pd-export-ids = "pd_export_ids:main"
@@ -38,12 +46,43 @@ include = ["pagerduty*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.mypy]
+# Parse version for mypy (CI uses 3.11). Runtime still supports python_requires >= 3.9.
+python_version = "3.11"
+explicit_package_bases = true
+warn_unused_ignores = true
+show_error_codes = true
+namespace_packages = true
+follow_imports = "silent"
+files = [
+    "pagerduty",
+    "tests",
+    "pd_export_ids.py",
+    "pd_get_teams_user_role.py",
+    "pd_patch_role.py",
+    "pd_remove_team_members.py",
+    "pd_update_escalation_policy_names.py",
+    "pd_update_schedule_names.py",
+    "pd_update_service_names.py",
+    "pd_update_team_roles.py",
+    "update_service_notifications.py",
+]
+
+# Third-party packages without usable stubs
+[[tool.mypy.overrides]]
+module = "prettytable.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "dotenv.*"
+ignore_missing_imports = true
+
 [tool.ruff]
 line-length = 100
 extend-exclude = ["venv", ".venv", "python", "build", "dist"]
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F"]
+select = ["E4", "E7", "E9", "F", "I", "UP"]
 
 # Public re-exports in package inits are intentional.
 [tool.ruff.lint.per-file-ignores]

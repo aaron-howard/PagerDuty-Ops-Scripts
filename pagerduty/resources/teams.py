@@ -4,12 +4,13 @@ PagerDuty Teams Resource
 Teams-specific operations and functionality.
 """
 
-from typing import Dict, List
-from .base import BaseResource
-from ..errors import PagerDutyError
 import logging
 
+from ..errors import PagerDutyError
+from .base import BaseResource
+
 logger = logging.getLogger(__name__)
+
 
 class TeamsResource(BaseResource):
     """Teams resource class."""
@@ -19,7 +20,7 @@ class TeamsResource(BaseResource):
         self.resource_name = "team"
         self.endpoint = "teams"
 
-    def get_members(self, team_id: str) -> List[Dict]:
+    def get_members(self, team_id: str) -> list[dict]:
         """
         Get team members.
 
@@ -35,7 +36,7 @@ class TeamsResource(BaseResource):
             logger.error(f"Failed to get team members for {team_id}: {str(e)}")
             raise PagerDutyError(f"Failed to get team members: {str(e)}") from e
 
-    def add_member(self, team_id: str, user_id: str, role: str = "member") -> Dict:
+    def add_member(self, team_id: str, user_id: str, role: str = "member") -> dict:
         """
         Add member to team.
 
@@ -48,12 +49,7 @@ class TeamsResource(BaseResource):
             Updated team membership data
         """
         try:
-            data = {
-                "member": {
-                    "user_id": user_id,
-                    "role": role
-                }
-            }
+            data = {"member": {"user_id": user_id, "role": role}}
             return self.api_client.post(f"{self.endpoint}/{team_id}/members", json_data=data)
         except Exception as e:
             logger.error(f"Failed to add member to team {team_id}: {str(e)}")
@@ -77,7 +73,7 @@ class TeamsResource(BaseResource):
             logger.error(f"Failed to remove member from team {team_id}: {str(e)}")
             raise PagerDutyError(f"Failed to remove team member: {str(e)}") from e
 
-    def update_member_role(self, team_id: str, user_id: str, role: str) -> Dict:
+    def update_member_role(self, team_id: str, user_id: str, role: str) -> dict:
         """
         Update member role in team.
 
@@ -91,12 +87,14 @@ class TeamsResource(BaseResource):
         """
         try:
             data = {"role": role}
-            return self.api_client.put(f"{self.endpoint}/{team_id}/members/{user_id}", json_data=data)
+            return self.api_client.put(
+                f"{self.endpoint}/{team_id}/members/{user_id}", json_data=data
+            )
         except Exception as e:
             logger.error(f"Failed to update member role in team {team_id}: {str(e)}")
             raise PagerDutyError(f"Failed to update team member role: {str(e)}") from e
 
-    def get_schedules(self, team_id: str) -> List[Dict]:
+    def get_schedules(self, team_id: str) -> list[dict]:
         """
         Get team schedules.
 
@@ -112,7 +110,7 @@ class TeamsResource(BaseResource):
             logger.error(f"Failed to get schedules for team {team_id}: {str(e)}")
             raise PagerDutyError(f"Failed to get team schedules: {str(e)}") from e
 
-    def get_escalation_policies(self, team_id: str) -> List[Dict]:
+    def get_escalation_policies(self, team_id: str) -> list[dict]:
         """
         Get team escalation policies.
 

@@ -375,7 +375,7 @@ teams = client.get("teams")
 
 ## Development
 
-Install dev dependencies (pytest, ruff):
+Install dev dependencies (pytest, ruff, mypy, pre-commit, typing stubs):
 
 ```bash
 pip install -e ".[dev]"
@@ -384,11 +384,22 @@ pip install -e ".[dev]"
 Run checks locally:
 
 ```bash
-ruff check pagerduty tests
+ruff check .
+ruff format --check .
+mypy
 pytest
 ```
 
-CI runs the same `ruff` and `pytest` steps on pushes and pull requests to `main` / `master` (see `.github/workflows/ci.yml`).
+Optional: install Git hooks so Ruff and mypy run on every commit:
+
+```bash
+pre-commit install
+pre-commit run --all-files   # once, to warm caches
+```
+
+CI runs Ruff (`check` + `format --check`), **mypy**, and **pytest** on pushes and pull requests to `main` / `master` (see `.github/workflows/ci.yml`).
+
+**Dependabot** opens weekly PRs for pip dependencies and monthly PRs for GitHub Actions (see `.github/dependabot.yml`).
 
 To generate API documentation locally, use a tool such as `pdoc` against the `pagerduty` package.
 
@@ -404,10 +415,11 @@ Contributions are welcome! Please follow these guidelines:
 ### Code Standards
 
 - Follow PEP 8 style guide
-- Use type hints
+- Use type hints (`mypy` must pass)
 - Write comprehensive docstrings
 - Include unit tests
 - Maintain backward compatibility
+- Prefer `pre-commit install` so hooks match CI
 
 ## License
 

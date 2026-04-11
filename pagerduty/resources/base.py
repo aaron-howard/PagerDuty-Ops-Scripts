@@ -4,12 +4,15 @@ PagerDuty Resource Base Class
 Base class for all PagerDuty resource classes.
 """
 
-from typing import Dict, List, Optional
-from ..api_client import PagerDutyAPIClient
-from ..errors import PagerDutyError, NotFoundError
+import builtins
 import logging
+from typing import Optional
+
+from ..api_client import PagerDutyAPIClient
+from ..errors import NotFoundError, PagerDutyError
 
 logger = logging.getLogger(__name__)
+
 
 class BaseResource:
     """Base class for PagerDuty resources."""
@@ -22,10 +25,10 @@ class BaseResource:
             api_client: PagerDuty API client instance
         """
         self.api_client = api_client or PagerDutyAPIClient()
-        self.resource_name = self.__class__.__name__.replace('Resource', '').lower()
+        self.resource_name = self.__class__.__name__.replace("Resource", "").lower()
         self.endpoint = f"{self.resource_name}s"
 
-    def get(self, resource_id: str, params: Optional[Dict] = None) -> Dict:
+    def get(self, resource_id: str, params: Optional[dict] = None) -> dict:
         """
         Get a single resource by ID.
 
@@ -49,7 +52,7 @@ class BaseResource:
             logger.error(f"Failed to get {self.resource_name}: {str(e)}")
             raise PagerDutyError(f"Failed to get {self.resource_name}: {str(e)}") from e
 
-    def list(self, params: Optional[Dict] = None) -> List[Dict]:
+    def list(self, params: Optional[dict] = None) -> list[dict]:
         """
         List all resources.
 
@@ -65,7 +68,7 @@ class BaseResource:
             logger.error(f"Failed to list {self.resource_name}s: {str(e)}")
             raise PagerDutyError(f"Failed to list {self.resource_name}s: {str(e)}") from e
 
-    def create(self, data: Dict) -> Dict:
+    def create(self, data: dict) -> dict:
         """
         Create a new resource.
 
@@ -81,7 +84,7 @@ class BaseResource:
             logger.error(f"Failed to create {self.resource_name}: {str(e)}")
             raise PagerDutyError(f"Failed to create {self.resource_name}: {str(e)}") from e
 
-    def update(self, resource_id: str, data: Dict) -> Dict:
+    def update(self, resource_id: str, data: dict) -> dict:
         """
         Update a resource.
 
@@ -93,7 +96,9 @@ class BaseResource:
             Updated resource data
         """
         try:
-            return self.api_client.put(f"{self.endpoint}/{resource_id}", json_data={self.resource_name: data})
+            return self.api_client.put(
+                f"{self.endpoint}/{resource_id}", json_data={self.resource_name: data}
+            )
         except Exception as e:
             logger.error(f"Failed to update {self.resource_name} {resource_id}: {str(e)}")
             raise PagerDutyError(f"Failed to update {self.resource_name}: {str(e)}") from e
@@ -115,7 +120,7 @@ class BaseResource:
             logger.error(f"Failed to delete {self.resource_name} {resource_id}: {str(e)}")
             raise PagerDutyError(f"Failed to delete {self.resource_name}: {str(e)}") from e
 
-    def get_by_name(self, name: str) -> Optional[Dict]:
+    def get_by_name(self, name: str) -> Optional[dict]:
         """
         Get resource by name.
 
@@ -126,16 +131,16 @@ class BaseResource:
             Resource data if found, None otherwise
         """
         try:
-            resources = self.list(params={'query': name})
+            resources = self.list(params={"query": name})
             for resource in resources:
-                if resource.get('name') == name:
+                if resource.get("name") == name:
                     return resource
             return None
         except Exception as e:
             logger.error(f"Failed to get {self.resource_name} by name: {str(e)}")
             return None
 
-    def search(self, query: str, params: Optional[Dict] = None) -> List[Dict]:
+    def search(self, query: str, params: Optional[dict] = None) -> builtins.list[dict]:
         """
         Search resources by query.
 
@@ -147,5 +152,5 @@ class BaseResource:
             List of matching resources
         """
         search_params = params.copy() if params else {}
-        search_params['query'] = query
+        search_params["query"] = query
         return self.list(params=search_params)

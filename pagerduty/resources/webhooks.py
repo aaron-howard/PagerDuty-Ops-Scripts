@@ -4,12 +4,13 @@ PagerDuty Webhooks Resource
 Webhooks-specific operations and functionality.
 """
 
-from typing import Dict, List
-from .base import BaseResource
-from ..errors import PagerDutyError
 import logging
 
+from ..errors import PagerDutyError
+from .base import BaseResource
+
 logger = logging.getLogger(__name__)
+
 
 class WebhooksResource(BaseResource):
     """Webhooks resource class."""
@@ -19,7 +20,7 @@ class WebhooksResource(BaseResource):
         self.resource_name = "webhook_subscription"
         self.endpoint = "webhook_subscriptions"
 
-    def get_by_service(self, service_id: str) -> List[Dict]:
+    def get_by_service(self, service_id: str) -> list[dict]:
         """
         Get webhooks for a specific service.
 
@@ -36,7 +37,7 @@ class WebhooksResource(BaseResource):
             logger.error(f"Failed to get webhooks for service {service_id}: {str(e)}")
             raise PagerDutyError(f"Failed to get service webhooks: {str(e)}") from e
 
-    def _is_for_service(self, webhook: Dict, service_id: str) -> bool:
+    def _is_for_service(self, webhook: dict, service_id: str) -> bool:
         """
         Check if webhook is for a specific service.
 
@@ -62,7 +63,7 @@ class WebhooksResource(BaseResource):
 
         return False
 
-    def create_for_service(self, service_id: str, webhook_data: Dict) -> Dict:
+    def create_for_service(self, service_id: str, webhook_data: dict) -> dict:
         """
         Create webhook for a specific service.
 
@@ -76,10 +77,7 @@ class WebhooksResource(BaseResource):
         try:
             # Ensure the webhook is configured for the service
             if "filter" not in webhook_data:
-                webhook_data["filter"] = {
-                    "type": "service_reference",
-                    "id": service_id
-                }
+                webhook_data["filter"] = {"type": "service_reference", "id": service_id}
 
             return self.create(webhook_data)
         except Exception as e:

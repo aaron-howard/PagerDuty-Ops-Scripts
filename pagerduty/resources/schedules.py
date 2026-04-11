@@ -4,12 +4,14 @@ PagerDuty Schedules Resource
 Schedules-specific operations and functionality.
 """
 
-from typing import Dict, List, Optional
-from .base import BaseResource
-from ..errors import PagerDutyError
 import logging
+from typing import Optional
+
+from ..errors import PagerDutyError
+from .base import BaseResource
 
 logger = logging.getLogger(__name__)
+
 
 class SchedulesResource(BaseResource):
     """Schedules resource class."""
@@ -19,7 +21,7 @@ class SchedulesResource(BaseResource):
         self.resource_name = "schedule"
         self.endpoint = "schedules"
 
-    def get_users(self, schedule_id: str) -> List[Dict]:
+    def get_users(self, schedule_id: str) -> list[dict]:
         """
         Get schedule users.
 
@@ -35,7 +37,7 @@ class SchedulesResource(BaseResource):
             logger.error(f"Failed to get users for schedule {schedule_id}: {str(e)}")
             raise PagerDutyError(f"Failed to get schedule users: {str(e)}") from e
 
-    def get_oncalls(self, schedule_id: str, params: Optional[Dict] = None) -> List[Dict]:
+    def get_oncalls(self, schedule_id: str, params: Optional[dict] = None) -> list[dict]:
         """
         Get schedule on-calls.
 
@@ -52,7 +54,7 @@ class SchedulesResource(BaseResource):
             logger.error(f"Failed to get on-calls for schedule {schedule_id}: {str(e)}")
             raise PagerDutyError(f"Failed to get schedule on-calls: {str(e)}") from e
 
-    def update_layer(self, schedule_id: str, layer_id: str, layer_data: Dict) -> Dict:
+    def update_layer(self, schedule_id: str, layer_id: str, layer_data: dict) -> dict:
         """
         Update schedule layer.
 
@@ -69,9 +71,9 @@ class SchedulesResource(BaseResource):
             schedule = self.get(schedule_id)
 
             # Update the specific layer
-            layers = schedule.get('schedule_layers', [])
+            layers = schedule.get("schedule_layers", [])
             for i, layer in enumerate(layers):
-                if str(layer.get('id')) == str(layer_id):
+                if str(layer.get("id")) == str(layer_id):
                     layers[i] = layer_data
                     break
 

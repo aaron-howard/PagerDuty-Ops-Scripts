@@ -1,7 +1,7 @@
 import os
 
-from tabulate import tabulate
 import dotenv
+from tabulate import tabulate
 
 from pagerduty import PagerDutyAPIClient
 from pagerduty.resources import TeamsResource

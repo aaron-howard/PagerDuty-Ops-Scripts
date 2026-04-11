@@ -4,12 +4,13 @@ PagerDuty Logging Module
 Centralized logging configuration and utilities.
 """
 
+import json
 import logging
 import logging.handlers
-import json
 import os
-from typing import Optional, Any
 from datetime import datetime, timezone
+from typing import Any, Optional
+
 
 class PagerDutyFormatter(logging.Formatter):
     """Custom formatter for PagerDuty logs."""
@@ -17,27 +18,28 @@ class PagerDutyFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record with additional context."""
         log_data = {
-            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-            'level': record.levelname,
-            'message': record.getMessage(),
-            'logger': record.name,
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "logger": record.name,
         }
 
         if record.exc_info:
-            log_data['exception'] = self.formatException(record.exc_info)
+            log_data["exception"] = self.formatException(record.exc_info)
 
-        if hasattr(record, 'request_id'):
-            log_data['request_id'] = record.request_id
+        if hasattr(record, "request_id"):
+            log_data["request_id"] = record.request_id
 
-        if hasattr(record, 'user_id'):
-            log_data['user_id'] = record.user_id
+        if hasattr(record, "user_id"):
+            log_data["user_id"] = record.user_id
 
         return json.dumps(log_data)
+
 
 class MaskingFilter(logging.Filter):
     """Filter to mask sensitive data in logs."""
 
-    SENSITIVE_KEYS = ['token', 'api_key', 'password', 'secret', 'access_token']
+    SENSITIVE_KEYS = ["token", "api_key", "password", "secret", "access_token"]
 
     def filter(self, record: logging.LogRecord) -> bool:
         """Mask sensitive information in log messages."""
@@ -48,13 +50,14 @@ class MaskingFilter(logging.Filter):
                     record.msg = original_msg.replace(key, f"{key}_MASKED")
         return True
 
+
 def setup_logging(
     name: str = "pagerduty",
     level: int = logging.INFO,
     log_file: Optional[str] = None,
     max_bytes: int = 10485760,  # 10MB
     backup_count: int = 5,
-    console_log: bool = True
+    console_log: bool = True,
 ) -> logging.Logger:
     """
     Set up logging configuration.
@@ -98,10 +101,7 @@ def setup_logging(
             os.makedirs(log_dir)
 
         file_handler = logging.handlers.RotatingFileHandler(
-            log_file,
-            maxBytes=max_bytes,
-            backupCount=backup_count,
-            encoding='utf-8'
+            log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
         )
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
@@ -110,6 +110,7 @@ def setup_logging(
 
     return logger
 
+
 def log_api_request(
     logger: logging.Logger,
     method: str,
@@ -117,7 +118,7 @@ def log_api_request(
     status_code: int,
     duration_ms: float,
     success: bool = True,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> None:
     """
     Log API request details.
@@ -132,18 +133,21 @@ def log_api_request(
         **kwargs: Additional context to log
     """
     extra = {
-        'request_id': kwargs.get('request_id'),
-        'method': method,
-        'endpoint': endpoint,
-        'status_code': status_code,
-        'duration_ms': duration_ms,
-        'success': success
+        "request_id": kwargs.get("request_id"),
+        "method": method,
+        "endpoint": endpoint,
+        "status_code": status_code,
+        "duration_ms": duration_ms,
+        "success": success,
     }
 
     if success:
         logger.info(f"API {method} {endpoint} - {status_code} ({duration_ms:.2f}ms)", extra=extra)
     else:
-        logger.error(f"API {method} {endpoint} failed - {status_code} ({duration_ms:.2f}ms)", extra=extra)
+        logger.error(
+            f"API {method} {endpoint} failed - {status_code} ({duration_ms:.2f}ms)", extra=extra
+        )
+
 
 # Global logger instance
 logger = setup_logging()

@@ -4,15 +4,18 @@ PagerDuty Utilities
 Utility functions for PagerDuty operations.
 """
 
-import json
 import csv
 import io
-from typing import Dict, Any, List, Optional, Union
-from prettytable import PrettyTable
+import json
 import logging
+from typing import Any, Optional, Union
+
+from prettytable import PrettyTable
+
 from .errors import ValidationError
 
 logger = logging.getLogger(__name__)
+
 
 def validate_pagerduty_id(pd_id: str, id_type: str = "ID") -> bool:
     """
@@ -36,10 +39,9 @@ def validate_pagerduty_id(pd_id: str, id_type: str = "ID") -> bool:
 
     return True
 
+
 def format_output(
-    data: List[Dict],
-    format_type: str = 'table',
-    field_names: Optional[List[str]] = None
+    data: list[dict], format_type: str = "table", field_names: Optional[list[str]] = None
 ) -> Union[str, PrettyTable]:
     """
     Format data for output in various formats.
@@ -61,7 +63,7 @@ def format_output(
     if not field_names:
         field_names = list(data[0].keys()) if data else []
 
-    if format_type == 'table':
+    if format_type == "table":
         table = PrettyTable()
         table.field_names = field_names
 
@@ -71,20 +73,21 @@ def format_output(
 
         return table
 
-    elif format_type == 'csv':
+    elif format_type == "csv":
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=field_names)
         writer.writeheader()
         writer.writerows(data)
         return output.getvalue()
 
-    elif format_type == 'json':
+    elif format_type == "json":
         return json.dumps(data, indent=2, ensure_ascii=False)
 
     else:
         raise ValueError(f"Invalid format type: {format_type}")
 
-def chunk_list(items: List[Any], chunk_size: int = 100) -> List[List[Any]]:
+
+def chunk_list(items: list[Any], chunk_size: int = 100) -> list[list[Any]]:
     """
     Split a list into chunks of specified size.
 
@@ -95,9 +98,10 @@ def chunk_list(items: List[Any], chunk_size: int = 100) -> List[List[Any]]:
     Returns:
         List of chunks
     """
-    return [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
+    return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
 
-def get_nested_value(data: Dict, key_path: str, default: Any = None) -> Any:
+
+def get_nested_value(data: dict, key_path: str, default: Any = None) -> Any:
     """
     Get nested value from dictionary using dot notation.
 
@@ -109,7 +113,7 @@ def get_nested_value(data: Dict, key_path: str, default: Any = None) -> Any:
     Returns:
         Value at specified path or default
     """
-    keys = key_path.split('.')
+    keys = key_path.split(".")
     current = data
 
     for key in keys:
@@ -120,7 +124,8 @@ def get_nested_value(data: Dict, key_path: str, default: Any = None) -> Any:
 
     return current if current is not None else default
 
-def set_nested_value(data: Dict, key_path: str, value: Any) -> None:
+
+def set_nested_value(data: dict, key_path: str, value: Any) -> None:
     """
     Set nested value in dictionary using dot notation.
 
@@ -129,7 +134,7 @@ def set_nested_value(data: Dict, key_path: str, value: Any) -> None:
         key_path: Dot-separated path to value
         value: Value to set
     """
-    keys = key_path.split('.')
+    keys = key_path.split(".")
     current = data
 
     for key in keys[:-1]:
@@ -139,7 +144,8 @@ def set_nested_value(data: Dict, key_path: str, value: Any) -> None:
 
     current[keys[-1]] = value
 
-def mask_sensitive_data(data: Any, sensitive_keys: List[str] = None) -> Any:
+
+def mask_sensitive_data(data: Any, sensitive_keys: Optional[list[str]] = None) -> Any:
     """
     Mask sensitive data in dictionaries or strings.
 
@@ -151,10 +157,15 @@ def mask_sensitive_data(data: Any, sensitive_keys: List[str] = None) -> Any:
         Data with sensitive values masked
     """
     if sensitive_keys is None:
-        sensitive_keys = ['token', 'api_key', 'password', 'secret', 'access_token']
+        sensitive_keys = ["token", "api_key", "password", "secret", "access_token"]
 
     if isinstance(data, dict):
-        return {k: mask_sensitive_data(v, sensitive_keys) if k.lower() not in sensitive_keys else "***MASKED***" for k, v in data.items()}
+        return {
+            k: mask_sensitive_data(v, sensitive_keys)
+            if k.lower() not in sensitive_keys
+            else "***MASKED***"
+            for k, v in data.items()
+        }
     elif isinstance(data, list):
         return [mask_sensitive_data(item, sensitive_keys) for item in data]
     elif isinstance(data, str):
@@ -164,6 +175,7 @@ def mask_sensitive_data(data: Any, sensitive_keys: List[str] = None) -> Any:
         return data
     else:
         return data
+
 
 def validate_email(email: str) -> bool:
     """
@@ -176,8 +188,10 @@ def validate_email(email: str) -> bool:
         True if valid email format, False otherwise
     """
     import re
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(pattern, email))
+
 
 def validate_phone(phone: str) -> bool:
     """
@@ -190,6 +204,7 @@ def validate_phone(phone: str) -> bool:
         True if valid phone format, False otherwise
     """
     import re
+
     # Basic international phone number validation
-    pattern = r'^\+?[0-9\s\-\(\)]{10,}$'
+    pattern = r"^\+?[0-9\s\-\(\)]{10,}$"
     return bool(re.match(pattern, phone))

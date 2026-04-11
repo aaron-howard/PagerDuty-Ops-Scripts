@@ -27,7 +27,9 @@ def update_service_urgency_rule(services_api: ServicesResource, service: dict) -
 def main() -> None:
     pd_api_token = os.getenv("PD_API_TOKEN")
     if not pd_api_token:
-        print("PagerDuty API token not found. Please set PD_API_TOKEN in your environment or .env file.")
+        print(
+            "PagerDuty API token not found. Please set PD_API_TOKEN in your environment or .env file."
+        )
         sys.exit(1)
 
     client = PagerDutyAPIClient(api_token=pd_api_token)

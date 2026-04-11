@@ -1,7 +1,7 @@
 import os
 
-from tabulate import tabulate
 import dotenv
+from tabulate import tabulate
 
 from pagerduty import PagerDutyAPIClient
 from pagerduty.resources import TeamsResource
@@ -34,7 +34,9 @@ def main():
             user_role = member.get("role", "")
             table_data.append([idx, user_id, user_type, user_summary, user_role])
 
-        print(tabulate(table_data, headers=["#", "ID", "Type", "Summary", "Role"], tablefmt="github"))
+        print(
+            tabulate(table_data, headers=["#", "ID", "Type", "Summary", "Role"], tablefmt="github")
+        )
 
         for idx, member in enumerate(members):
             user = member.get("user", {})
@@ -42,7 +44,9 @@ def main():
             user_summary = user.get("summary", "")
             current_role = member.get("role", "")
             print(f"\nUser: {user_summary} (Current Role: {current_role})")
-            new_role = input("Enter new role (manager, responder, observer) or press Enter to skip: ").strip()
+            new_role = input(
+                "Enter new role (manager, responder, observer) or press Enter to skip: "
+            ).strip()
             if new_role and new_role != current_role:
                 try:
                     teams.update_member_role(team_id, user_id, new_role)
