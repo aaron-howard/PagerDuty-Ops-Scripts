@@ -28,6 +28,36 @@ Daily Operations Scripts for managing the PagerDuty application.
 - `PD_API_TOKEN`: Your PagerDuty API token (required for all scripts)
 - `PD_TEAM_ID`: Your PagerDuty team ID (required for team-specific scripts)
 
+## When to use scripts vs the PagerDuty MCP server
+
+PagerDuty publishes a hosted Model Context Protocol server at
+`https://mcp.pagerduty.com/mcp` ([source](https://github.com/PagerDuty/pagerduty-mcp-server)).
+This repo includes an [.mcp.json](.mcp.json) that wires it into MCP-aware clients
+(Claude Code, VS Code, etc.) using your existing `PD_API_TOKEN`.
+
+The MCP server and these scripts have different jobs:
+
+| Use case | Use this |
+|---|---|
+| Ad-hoc questions ("who's on call for team X right now?", "show open incidents on service Y") | **MCP server** |
+| One-off reads of teams, services, schedules, oncalls, incidents | **MCP server** |
+| Bulk writes that need a CSV input, `--dry-run`, or interactive confirmation | **Scripts in this repo** |
+| Operations the MCP server **cannot** perform (see below) | **Scripts in this repo** |
+
+The PagerDuty MCP server intentionally does not expose write access to several
+high-impact areas. The scripts here cover the gaps:
+
+- **User role updates** — MCP exposes no user write tools.
+  Use [pd_patch_role.py](pd_patch_role.py).
+- **Escalation policy writes** — MCP escalation policy writes are disabled.
+  Use [pd_update_escalation_policy_names.py](pd_update_escalation_policy_names.py).
+- **Maintenance windows, tags, audit export, SCIM, standards, licenses,
+  webhooks, extensions, analytics** — none are in the MCP server today.
+
+When adding new functionality, prefer the MCP server for read-only / ad-hoc use
+cases. Reach for a script when you need bulk writes, dry-run rehearsal, CSV
+input, or coverage of one of the gap areas above.
+
 ## Scripts
 
 ### `pd_export_ids.py`
@@ -97,9 +127,12 @@ export PD_TEAM_ID=your_team_id_here
 python pd_update_team_roles.py
 ```
 
-### `pd_get_teams_user_role.py`
+### `pd_get_teams_user_role.py` _(deprecated)_
 
 Lists team members and their roles in a table format.
+
+**Deprecated**: prefer the PagerDuty MCP server's `list_team_members` tool. The
+script remains for CLI/CSV use cases and prints a deprecation notice on stderr.
 
 **Usage:**
 ```bash

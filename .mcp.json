@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "pagerduty": {
+      "type": "http",
+      "url": "https://mcp.pagerduty.com/mcp",
+      "headers": {
+        "Authorization": "Token token=${PD_API_TOKEN}",
+        "Accept": "application/json, text/event-stream"
+      }
+    }
+  }
+}

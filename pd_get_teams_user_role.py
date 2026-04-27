@@ -1,9 +1,33 @@
+"""DEPRECATED: prefer the PagerDuty MCP server's `list_team_members` tool.
+
+This script lists members of a single PagerDuty team in a table. The same data
+is now available via the official PagerDuty MCP server (configured in
+`.mcp.json`) through the `list_team_members` tool, which is strictly better for
+ad-hoc reads from an MCP-aware client. This script is retained only for users
+who need a CLI/CSV-friendly fallback.
+"""
+
+import sys
+import warnings
+
 import requests
 import os
 from tabulate import tabulate
 import dotenv
 
 dotenv.load_dotenv()
+
+warnings.warn(
+    "pd_get_teams_user_role.py is deprecated; use the PagerDuty MCP server's "
+    "list_team_members tool. See README.md 'When to use scripts vs MCP'.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+print(
+    "[deprecated] Prefer the PagerDuty MCP server's list_team_members tool. "
+    "See README.md.",
+    file=sys.stderr,
+)
 
 API_KEY = os.environ.get("PD_API_TOKEN")  # Use .env or environment variable
 TEAM_ID = os.environ.get("PD_TEAM_ID")  # Get team ID from environment variable
