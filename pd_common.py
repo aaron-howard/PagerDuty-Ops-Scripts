@@ -44,10 +44,12 @@ def build_headers(token):
     }
 
 
-def make_api_request(endpoint, token, method="GET", params=None, data=None):
+def make_api_request(endpoint, token, method="GET", params=None, data=None, extra_headers=None):
     """Make a request to the PagerDuty API. Returns parsed JSON or None on error."""
     url = f"{PD_API_BASE}/{endpoint}"
     headers = build_headers(token)
+    if extra_headers:
+        headers.update(extra_headers)
     try:
         if method == "GET":
             response = requests.get(url, headers=headers, params=params, timeout=REQUEST_TIMEOUT)
@@ -78,16 +80,22 @@ def make_api_request(endpoint, token, method="GET", params=None, data=None):
         return None
 
 
-def paginate(resource, token, params=None, page_size=100):
-    """Yield items from a paginated PagerDuty list endpoint."""
+def paginate(resource, token, params=None, page_size=100, extra_headers=None, items_key=None):
+    """Yield items from a paginated PagerDuty list endpoint.
+
+    `items_key` defaults to the last path segment of `resource` (so "schedules"
+    for resource="v3/schedules"). Set explicitly when the response key differs
+    from the URL path.
+    """
     base_params = dict(params or {})
+    key = items_key or resource.rsplit("/", 1)[-1]
     offset = 0
     while True:
         page_params = {**base_params, "limit": page_size, "offset": offset}
-        data = make_api_request(resource, token, params=page_params)
-        if not data or resource not in data:
+        data = make_api_request(resource, token, params=page_params, extra_headers=extra_headers)
+        if not data or key not in data:
             break
-        for item in data[resource]:
+        for item in data[key]:
             yield item
         if not data.get("more"):
             break

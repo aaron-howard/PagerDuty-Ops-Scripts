@@ -243,6 +243,27 @@ python pd_bulk_extensions.py \
     --service-filter prod [--dry-run] [--yes]
 ```
 
+### `pd_v3_schedules_list.py`
+
+Read-only inventory of PagerDuty Schedules v3 (Early Access). v3 is the
+"flexible schedules" API (rotations + events + custom shifts + overrides as
+separate sub-resources, instead of v2's embedded `schedule_layers`). v2 and v3
+schedules coexist in the same account.
+
+**PagerDuty marks v3 as Early Access** with the warning *"Do not use this
+endpoint in production, as it may change"*. This script is intended for
+inventory/visibility only. The existing v2 schedule scripts in this repo
+remain the right tool for production schedule operations until v3 is GA.
+
+The script automatically sends the required `X-EARLY-ACCESS:
+flexible-schedules-early-access` header.
+
+**Usage:**
+```bash
+python pd_v3_schedules_list.py [-f table|csv|json] [-o FILE]
+python pd_v3_schedules_list.py --get PSCHEDID [--include-users]
+```
+
 ### `pd_alert_grouping.py`
 
 Manages PagerDuty Alert Grouping Settings. `--list` prints existing settings and the
