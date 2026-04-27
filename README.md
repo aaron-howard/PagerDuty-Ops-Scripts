@@ -1,7 +1,5 @@
 # PagerDuty-Ops-Scripts
 
-[![Demo](https://github.com/yourusername/pd-ops-scripts/workflows/PagerDuty%20Scripts%20Demo/badge.svg)](https://github.com/yourusername/pd-ops-scripts/actions)
-
 Daily Operations Scripts for managing the PagerDuty application.
 
 ## Prerequisites
@@ -46,12 +44,12 @@ python pd_export_ids.py [-t API_TOKEN] [-o OUTPUT_FILE] [-f FORMAT]
 
 ### `pd_patch_role.py`
 
-Finds all PagerDuty users and updates their role as needed.
+Bulk-update PagerDuty user roles. Selects every user currently in `--from-role` and patches them to `--to-role`.
 
 **Usage:**
 ```bash
 export PD_API_TOKEN=your_token_here
-python pd_patch_role.py
+python pd_patch_role.py --from-role user --to-role observer [--dry-run] [--yes]
 ```
 
 ### `pd_update_service_names.py`
@@ -118,7 +116,7 @@ Interactive script to remove team members from schedules, escalation policies, a
 ```bash
 export PD_API_TOKEN=your_token_here
 export PD_TEAM_ID=your_team_id_here
-python pd_remove_team_members.py
+python pd_remove_team_members.py [--dry-run]
 ```
 
 ### `update_service_notifications.py`
@@ -128,7 +126,7 @@ Updates all services to use severity-based incident urgency rules.
 **Usage:**
 ```bash
 export PD_API_TOKEN=your_token_here
-python update_service_notifications.py
+python update_service_notifications.py [--dry-run] [--yes]
 ```
 
 ## Security Features

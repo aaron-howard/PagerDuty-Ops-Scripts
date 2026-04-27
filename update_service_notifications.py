@@ -1,70 +1,83 @@
-import os
-import requests
-import sys
-from dotenv import load_dotenv
+#!/usr/bin/env python3
+"""Set every PagerDuty service's incident_urgency_rule to 'severity_based'."""
 
-# Load environment variables from .env if present
-load_dotenv()
-PD_API_TOKEN = os.getenv("PD_API_TOKEN")
-PD_API_URL = "https://api.pagerduty.com/services"
-HEADERS = {
-    "Authorization": f"Token token={PD_API_TOKEN}",
-    "Accept": "application/vnd.pagerduty+json;version=2",
-    "Content-Type": "application/json"
-}
+import argparse
 
-def get_all_services():
-    services = []
-    url = PD_API_URL
-    while url:
-        resp = requests.get(url, headers=HEADERS, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        services.extend(data.get("services", []))
-        if data.get("more"):
-            next_offset = data.get("offset", 0) + data.get("limit", 100)
-            url = f"{PD_API_URL}?offset={next_offset}&limit=100"
-        else:
-            url = None
-    return services
+from pd_common import fetch_all, get_pd_api_token, make_api_request
 
-def update_service_urgency_rule(service):
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="Set incident_urgency_rule.urgency to 'severity_based' on all services."
+    )
+    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show which services would be updated without making changes.",
+    )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Skip the interactive confirmation prompt.",
+    )
+    return parser.parse_args()
+
+
+def update_service_urgency_rule(token, service, dry_run=False):
     service_id = service["id"]
-    # Set urgency to 'severity_based' for dynamic notifications based on alert severity
-    incident_urgency_rule = service.get("incident_urgency_rule", {})
-    if not incident_urgency_rule:
-        incident_urgency_rule = {
-            "type": "constant",
-            "urgency": "severity_based"
-        }
-    else:
-        incident_urgency_rule["urgency"] = "severity_based"
+    rule = dict(service.get("incident_urgency_rule") or {"type": "constant"})
+    rule["urgency"] = "severity_based"
+    if dry_run:
+        return True
+    result = make_api_request(
+        f"services/{service_id}",
+        token,
+        method="PUT",
+        data={"service": {"incident_urgency_rule": rule}},
+    )
+    return result is not None
 
-    payload = {
-        "service": {
-            "incident_urgency_rule": incident_urgency_rule
-        }
-    }
-    resp = requests.put(f"{PD_API_URL}/{service_id}", headers=HEADERS, json=payload, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+
+def main():
+    args = parse_arguments()
+    token = get_pd_api_token(args.token)
+
+    services = fetch_all("services", token, label="services")
+    pending = [s for s in services if (s.get("incident_urgency_rule") or {}).get("urgency") != "severity_based"]
+    print(f"\n{len(pending)} services need urgency='severity_based'.")
+    if not pending:
+        return
+
+    if not args.dry_run and not args.yes:
+        answer = input(f"Update {len(pending)} services? (y/n): ").strip().lower()
+        if answer != "y":
+            print("Operation cancelled.")
+            return
+
+    updated = 0
+    failed = 0
+    for service in pending:
+        name = service.get("name", service["id"])
+        if args.dry_run:
+            print(f"Would update {name} ({service['id']})")
+            updated += 1
+            continue
+        try:
+            if update_service_urgency_rule(token, service):
+                print(f"Updated {name} ({service['id']})")
+                updated += 1
+            else:
+                print(f"Failed to update {name} ({service['id']})")
+                failed += 1
+        except Exception as e:
+            print(f"Failed to update {name} ({service['id']}): {e}")
+            failed += 1
+
+    verb = "Would update" if args.dry_run else "Updated"
+    print(f"\nSummary: {verb} {updated} services, {failed} failed.")
+
 
 if __name__ == "__main__":
-    if not PD_API_TOKEN:
-        print("PagerDuty API token not found. Please set PD_API_TOKEN in your environment or .env file.")
-        sys.exit(1)
-
-    print("Fetching all services...")
-    services = get_all_services()
-    print(f"Found {len(services)} services.")
-
-    for service in services:
-        service_id = service["id"]
-        print(f"Updating incident_urgency_rule for service {service['name']} ({service_id})...")
-        try:
-            update_service_urgency_rule(service)
-            print(f"Service {service['name']} updated.")
-        except Exception as e:
-            print(f"Failed to update service {service['name']} ({service_id}): {e}")
-
-    print("All service incident_urgency_rule values updated to 'severity_based'.")
+    main()

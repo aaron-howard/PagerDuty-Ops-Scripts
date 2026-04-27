@@ -1,74 +1,109 @@
 #!/usr/bin/env python3
+"""Bulk-update PagerDuty user roles.
+
+Selects every user with --from-role and patches them to --to-role.
+Use --dry-run to preview before applying.
 """
-Update PagerDuty user roles script.
 
-Lists all users and updates their roles as needed.
-API token should be set via the PD_API_TOKEN environment variable.
-"""
+import argparse
+import sys
 
-import requests
-import os
-import dotenv
-dotenv.load_dotenv()
+from pd_common import fetch_all, get_pd_api_token, make_api_request
 
-API_TOKEN = os.environ.get('PD_API_TOKEN')
-if not API_TOKEN:
-    raise RuntimeError("Please set the PD_API_TOKEN environment variable.")
-
-HEADERS = {
-    'Authorization': f'Token token={API_TOKEN}',
-    'Accept': 'application/vnd.pagerduty+json;version=2',
-    'Content-Type': 'application/json'
+VALID_ROLES = {
+    "admin",
+    "limited_user",
+    "observer",
+    "owner",
+    "read_only_user",
+    "read_only_limited_user",
+    "restricted_access",
+    "user",
 }
 
-def get_all_users():
-    """Fetch all PagerDuty users with pagination and error handling."""
-    users = []
-    offset = 0
-    limit = 100
-    while True:
-        try:
-            resp = requests.get(
-                'https://api.pagerduty.com/users',
-                headers=HEADERS,
-                params={'limit': limit, 'offset': offset},
-                timeout=30
-            )
-            print(f"Status: {resp.status_code}")
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception as e:
-            print(f"API or JSON error: {e}")
-            break
-        users.extend(data.get('users', []))
-        if not data.get('more'):
-            break
-        offset += limit
-    return users
 
-def update_user_role(user_id, new_role):
-    """Update the role of a PagerDuty user."""
-    try:
-        resp = requests.patch(
-            f'https://api.pagerduty.com/users/{user_id}',
-            headers=HEADERS,
-            json={'user': {'role': new_role}},
-            timeout=30
-        )
-        if resp.status_code == 200:
-            print(f"Updated user {user_id} to role '{new_role}'.")
-        else:
-            print(f"Failed to update user {user_id}: {resp.status_code} - {resp.text}")
-    except Exception as e:
-        print(f"Exception updating user {user_id}: {e}")
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Bulk-update PagerDuty user roles.")
+    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    parser.add_argument(
+        "--from-role",
+        required=True,
+        help="Only update users currently in this role (e.g. 'user').",
+    )
+    parser.add_argument(
+        "--to-role",
+        required=True,
+        help="The role to assign (e.g. 'observer').",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would change without making any updates.",
+    )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Skip the interactive confirmation prompt.",
+    )
+    return parser.parse_args()
+
+
+def update_user_role(token, user_id, new_role):
+    result = make_api_request(
+        f"users/{user_id}",
+        token,
+        method="PATCH",
+        data={"user": {"role": new_role}},
+    )
+    return result is not None
+
 
 def main():
-    users = get_all_users()
-    # Example: promote all 'observer' users to 'user'
-    observer_users = [u for u in users if u.get('role') == 'user']
-    for user in observer_users:
-        user_id = user['id']
-        update_user_role(user_id, 'observer')
+    args = parse_arguments()
+
+    if args.from_role == args.to_role:
+        print("Error: --from-role and --to-role are identical; nothing to do.")
+        sys.exit(2)
+    for label, role in (("--from-role", args.from_role), ("--to-role", args.to_role)):
+        if role not in VALID_ROLES:
+            print(f"Warning: {label}='{role}' is not a recognized PagerDuty role. Proceeding anyway.")
+
+    token = get_pd_api_token(args.token)
+    users = fetch_all("users", token, label="users")
+    targets = [u for u in users if u.get("role") == args.from_role]
+    print(f"\n{len(targets)} users currently have role '{args.from_role}'.")
+
+    if not targets:
+        return
+
+    if not args.dry_run and not args.yes:
+        answer = input(
+            f"Update {len(targets)} users from '{args.from_role}' to '{args.to_role}'? (y/n): "
+        ).strip().lower()
+        if answer != "y":
+            print("Operation cancelled.")
+            return
+
+    updated = 0
+    failed = 0
+    for user in targets:
+        user_id = user.get("id")
+        name = user.get("name") or user.get("email") or user_id
+        if args.dry_run:
+            print(f"Would update {name} ({user_id}) -> '{args.to_role}'")
+            updated += 1
+            continue
+        if update_user_role(token, user_id, args.to_role):
+            print(f"Updated {name} ({user_id}) -> '{args.to_role}'")
+            updated += 1
+        else:
+            print(f"Failed to update {name} ({user_id})")
+            failed += 1
+
+    verb = "Would update" if args.dry_run else "Updated"
+    print(f"\nSummary: {verb} {updated} users, {failed} failed.")
+
 
 if __name__ == "__main__":
     main()
