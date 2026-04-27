@@ -51,6 +51,8 @@ def make_api_request(endpoint, token, method="GET", params=None, data=None):
     try:
         if method == "GET":
             response = requests.get(url, headers=headers, params=params, timeout=REQUEST_TIMEOUT)
+        elif method == "POST":
+            response = requests.post(url, headers=headers, json=data, params=params, timeout=REQUEST_TIMEOUT)
         elif method == "PUT":
             response = requests.put(url, headers=headers, json=data, timeout=REQUEST_TIMEOUT)
         elif method == "PATCH":
@@ -90,6 +92,25 @@ def paginate(resource, token, params=None, page_size=100):
         if not data.get("more"):
             break
         offset += page_size
+
+
+def paginate_cursor(endpoint, token, items_key, params=None, page_size=100):
+    """Yield items from a cursor-paginated PagerDuty endpoint (e.g. /audit/records)."""
+    base_params = dict(params or {})
+    base_params.setdefault("limit", page_size)
+    cursor = None
+    while True:
+        page_params = dict(base_params)
+        if cursor:
+            page_params["cursor"] = cursor
+        data = make_api_request(endpoint, token, params=page_params)
+        if not data:
+            break
+        for item in data.get(items_key, []):
+            yield item
+        cursor = data.get("next_cursor")
+        if not cursor:
+            break
 
 
 def fetch_all(resource, token, params=None, name_filter=None, label=None):

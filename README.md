@@ -162,6 +162,99 @@ export PD_API_TOKEN=your_token_here
 python update_service_notifications.py [--dry-run] [--yes]
 ```
 
+### `pd_bulk_maintenance_window.py`
+
+Bulk-creates maintenance windows from a CSV (`service_id, start_time, end_time, description`).
+Times must be ISO 8601 with timezone. Requires a `--from-email` (a valid PagerDuty user email)
+because the API needs a `From` header for window creation.
+
+**Usage:**
+```bash
+python pd_bulk_maintenance_window.py windows.csv --from-email you@example.com [--dry-run] [--yes]
+```
+
+### `pd_apply_tags.py`
+
+Bulk add/remove PagerDuty tags from a CSV (`entity_type, entity_id, tag_label, action`).
+Supports `users`, `teams`, `services`, and `escalation_policies`. Creates new tags as needed.
+Groups operations per entity and submits one atomic `change_tags` call per entity.
+
+**Usage:**
+```bash
+python pd_apply_tags.py tags.csv [--dry-run] [--yes]
+```
+
+### `pd_audit_export.py`
+
+Exports `/audit/records` to CSV or JSON with cursor pagination. Useful for compliance
+reports and change-history audits. Supports filtering by date range, actor, action prefix,
+and root resource type.
+
+**Usage:**
+```bash
+python pd_audit_export.py --since 2026-04-01T00:00:00Z --until 2026-05-01T00:00:00Z \
+    --action update --root-resource-type services -f csv -o audit.csv
+```
+
+### `pd_scim_user_audit.py`
+
+Diffs PagerDuty SCIM users (`/scim/v2/Users`) against an expected-users CSV
+(`email, displayName, active`) exported from your IdP. Reports orphans, missing users,
+and field drift. Read-only; does not provision or deprovision.
+
+**Usage:**
+```bash
+python pd_scim_user_audit.py expected_users.csv -o scim_audit.txt
+```
+
+### `pd_standards_report.py`
+
+Exports per-resource adoption of PagerDuty Service Standards. Useful for compliance
+dashboards. Use `--failing-only` to focus on services that aren't meeting standards.
+
+**Usage:**
+```bash
+python pd_standards_report.py --resource-type technical_services --failing-only -f csv -o standards.csv
+```
+
+### `pd_event_orchestration_rules.py`
+
+Exports each Event Orchestration's metadata, router config, and global catch-all rules
+to one JSON file per orchestration in the output directory. Designed so the directory
+can be committed to git and rule changes show up as reviewable diffs.
+
+**Usage:**
+```bash
+python pd_event_orchestration_rules.py -o event_orchestrations/
+```
+
+### `pd_bulk_extensions.py`
+
+Bulk-attaches an extension (Slack, Generic Webhook, etc) to many services. Targets are
+chosen via `--service-filter` substring or `--services-csv`. The schema is resolved by
+substring match against `/extension_schemas`.
+
+**Usage:**
+```bash
+python pd_bulk_extensions.py \
+    --schema "Generic Webhook" \
+    --name "Datadog hook" \
+    --endpoint-url https://example.com/hook \
+    --service-filter prod [--dry-run] [--yes]
+```
+
+### `pd_alert_grouping.py`
+
+Manages PagerDuty Alert Grouping Settings. `--list` prints existing settings and the
+services they cover; `--attach NAME --services-csv FILE` adds services to the named
+setting (CSV column: `service_id`).
+
+**Usage:**
+```bash
+python pd_alert_grouping.py --list
+python pd_alert_grouping.py --attach "Intelligent grouping" --services-csv services.csv [--dry-run] [--yes]
+```
+
 ## Security Features
 
 - **Secure Token Input**: API tokens are requested using `getpass.getpass()` to prevent them from appearing in terminal history
