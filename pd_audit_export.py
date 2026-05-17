@@ -12,12 +12,12 @@ import io
 import json
 import sys
 
-from pd_common import get_pd_api_token, paginate_cursor
+from pd_common import add_token_arguments, get_pd_api_token, paginate_cursor
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Export PagerDuty audit records to CSV or JSON.")
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     parser.add_argument("--since", help="ISO 8601 lower bound (e.g. 2026-04-01T00:00:00Z)")
     parser.add_argument("--until", help="ISO 8601 upper bound")
     parser.add_argument(
@@ -101,7 +101,7 @@ def flatten(record):
 
 def main():
     args = parse_arguments()
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
     params = build_params(args)
 
     print("Fetching audit records...", end="", flush=True, file=sys.stderr)

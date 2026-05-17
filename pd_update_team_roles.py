@@ -1,7 +1,9 @@
-import requests
 import os
-from tabulate import tabulate
+import sys
+
 import dotenv
+import requests
+from tabulate import tabulate
 
 dotenv.load_dotenv()
 
@@ -9,10 +11,12 @@ API_KEY = os.environ.get("PD_API_TOKEN")
 TEAM_ID = os.environ.get("PD_TEAM_ID")  # Get team ID from environment variable
 
 if not API_KEY:
-    API_KEY = input("Enter your PagerDuty API key: ")
+    print("Error: Set PD_API_TOKEN.", file=sys.stderr)
+    sys.exit(1)
 
 if not TEAM_ID:
-    TEAM_ID = input("Enter your PagerDuty team ID: ")
+    print("Error: Set PD_TEAM_ID.", file=sys.stderr)
+    sys.exit(1)
 
 headers = {
     "Authorization": f"Token token={API_KEY}",

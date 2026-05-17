@@ -3,14 +3,14 @@
 
 import argparse
 
-from pd_common import fetch_all, get_pd_api_token, make_api_request
+from pd_common import fetch_all, add_token_arguments, get_pd_api_token, make_api_request
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Set incident_urgency_rule.urgency to 'severity_based' on all services."
     )
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -42,7 +42,7 @@ def update_service_urgency_rule(token, service, dry_run=False):
 
 def main():
     args = parse_arguments()
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
 
     services = fetch_all("services", token, label="services")
     pending = [s for s in services if (s.get("incident_urgency_rule") or {}).get("urgency") != "severity_based"]

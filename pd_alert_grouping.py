@@ -18,14 +18,14 @@ import argparse
 import csv
 import sys
 
-from pd_common import fetch_all, get_pd_api_token, make_api_request
+from pd_common import fetch_all, add_token_arguments, get_pd_api_token, make_api_request
 
 ENDPOINT = "alert_grouping_settings"
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Manage PagerDuty Alert Grouping Settings in bulk.")
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--list", action="store_true", help="List all alert grouping settings.")
     mode.add_argument(
@@ -116,7 +116,7 @@ def attach(token, args):
 
 def main():
     args = parse_arguments()
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
     if args.list:
         list_settings(token)
     else:

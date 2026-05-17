@@ -8,7 +8,7 @@ Use --dry-run to preview before applying.
 import argparse
 import sys
 
-from pd_common import fetch_all, get_pd_api_token, make_api_request
+from pd_common import fetch_all, add_token_arguments, get_pd_api_token, make_api_request
 
 VALID_ROLES = {
     "admin",
@@ -24,7 +24,7 @@ VALID_ROLES = {
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Bulk-update PagerDuty user roles.")
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     parser.add_argument(
         "--from-role",
         required=True,
@@ -69,7 +69,7 @@ def main():
         if role not in VALID_ROLES:
             print(f"Warning: {label}='{role}' is not a recognized PagerDuty role. Proceeding anyway.")
 
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
     users = fetch_all("users", token, label="users")
     targets = [u for u in users if u.get("role") == args.from_role]
     print(f"\n{len(targets)} users currently have role '{args.from_role}'.")

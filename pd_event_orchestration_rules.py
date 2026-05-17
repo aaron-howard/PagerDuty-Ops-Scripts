@@ -16,12 +16,12 @@ import os
 import re
 import sys
 
-from pd_common import fetch_all, get_pd_api_token, make_api_request
+from pd_common import fetch_all, add_token_arguments, get_pd_api_token, make_api_request
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Export PagerDuty Event Orchestration rules to JSON.")
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     parser.add_argument(
         "-o",
         "--output-dir",
@@ -38,7 +38,7 @@ def slugify(name):
 
 def main():
     args = parse_arguments()
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
 
     orchestrations = fetch_all("event_orchestrations", token, label="event_orchestrations")
     os.makedirs(args.output_dir, exist_ok=True)

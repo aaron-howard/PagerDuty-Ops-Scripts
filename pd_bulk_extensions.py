@@ -25,12 +25,12 @@ import argparse
 import csv
 import sys
 
-from pd_common import fetch_all, get_pd_api_token, make_api_request
+from pd_common import fetch_all, add_token_arguments, get_pd_api_token, make_api_request
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Bulk-attach a PagerDuty extension to many services.")
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     parser.add_argument("--schema", required=True, help="Extension schema name (substring match).")
     parser.add_argument("--name", required=True, help="Display name for the new extension.")
     parser.add_argument(
@@ -102,7 +102,7 @@ def create_extension(token, schema, service, args):
 
 def main():
     args = parse_arguments()
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
     schema = find_schema(token, args.schema)
     print(f"Using extension schema {schema.get('id')}: {schema.get('label') or schema.get('name')}")
 

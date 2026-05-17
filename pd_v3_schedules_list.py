@@ -21,7 +21,7 @@ import io
 import json
 import sys
 
-from pd_common import get_pd_api_token, make_api_request, paginate
+from pd_common import add_token_arguments, get_pd_api_token, make_api_request, paginate
 
 V3_RESOURCE = "v3/schedules"
 EARLY_ACCESS_HEADERS = {"X-EARLY-ACCESS": "flexible-schedules-early-access"}
@@ -31,7 +31,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(
         description="List PagerDuty Schedules v3 (Early Access). Read-only inventory."
     )
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     parser.add_argument(
         "-f",
         "--format",
@@ -107,7 +107,7 @@ def render_list(schedules, fmt):
 
 def main():
     args = parse_arguments()
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
 
     if args.get:
         result = get_schedule(token, args.get, args.include_users)
