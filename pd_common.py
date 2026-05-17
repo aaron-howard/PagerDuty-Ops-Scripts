@@ -14,13 +14,31 @@ PD_API_HEADERS_ACCEPT = "application/vnd.pagerduty+json;version=2"
 REQUEST_TIMEOUT = 30
 
 
-def get_pd_api_token(cli_token=None):
-    """Resolve the PagerDuty API token from CLI arg, env, or interactive prompt."""
+def add_token_arguments(parser):
+    """Register standard -t/--token and --prompt flags on an argparse parser."""
+    parser.add_argument(
+        "-t",
+        "--token",
+        help="PagerDuty API token (prefer PD_API_TOKEN environment variable)",
+    )
+    parser.add_argument(
+        "--prompt",
+        action="store_true",
+        help="Prompt securely for API token when PD_API_TOKEN is unset (local dev only)",
+    )
+
+
+def get_pd_api_token(cli_token=None, *, allow_prompt=False):
+    """Resolve the PagerDuty API token from CLI arg, PD_API_TOKEN, or optional prompt."""
     token = cli_token or os.environ.get("PD_API_TOKEN")
-    if not token:
+    if not token and allow_prompt:
         token = getpass.getpass("Enter your PagerDuty API token: ")
     if not token:
-        print("Error: No API token provided.")
+        print(
+            "Error: No API token provided. Set PD_API_TOKEN, pass -t/--token, "
+            "or use --prompt for interactive entry.",
+            file=sys.stderr,
+        )
         sys.exit(1)
     return token
 

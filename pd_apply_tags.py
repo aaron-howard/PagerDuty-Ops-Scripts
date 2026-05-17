@@ -17,7 +17,7 @@ import csv
 import sys
 from collections import defaultdict
 
-from pd_common import fetch_all, get_pd_api_token, make_api_request
+from pd_common import fetch_all, add_token_arguments, get_pd_api_token, make_api_request
 
 VALID_ENTITY_TYPES = {"users", "teams", "services", "escalation_policies"}
 
@@ -25,7 +25,7 @@ VALID_ENTITY_TYPES = {"users", "teams", "services", "escalation_policies"}
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Bulk add/remove PagerDuty tags from a CSV.")
     parser.add_argument("csv_file", help="CSV with columns: entity_type, entity_id, tag_label, action")
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     parser.add_argument("--dry-run", action="store_true", help="Preview without changing tags.")
     parser.add_argument("-y", "--yes", action="store_true", help="Skip the confirmation prompt.")
     return parser.parse_args()
@@ -114,7 +114,7 @@ def apply_changes(token, entity_type, entity_id, add_ids, remove_ids, dry_run):
 
 def main():
     args = parse_arguments()
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
     rows = load_rows(args.csv_file)
     if not rows:
         print("No usable rows in CSV.")

@@ -68,7 +68,7 @@ Exports PagerDuty teams, schedules, escalation policies, services, and webhook s
 ```bash
 python pd_export_ids.py [-t API_TOKEN] [-o OUTPUT_FILE] [-f FORMAT]
 ```
-- `-t`, `--token`: PagerDuty API token. If omitted, uses the `PD_API_TOKEN` environment variable or prompts for secure input.
+- `-t`, `--token`: PagerDuty API token. If omitted, uses the `PD_API_TOKEN` environment variable. Use `--prompt` for secure interactive entry when unset (local dev only).
 - `-o`, `--output`: Output file (default: print to console).
 - `-f`, `--format`: Output format: `table`, `csv`, or `json` (default: `table`).
 

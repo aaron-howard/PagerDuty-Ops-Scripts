@@ -29,14 +29,16 @@ print(
     file=sys.stderr,
 )
 
-API_KEY = os.environ.get("PD_API_TOKEN")  # Use .env or environment variable
-TEAM_ID = os.environ.get("PD_TEAM_ID")  # Get team ID from environment variable
+API_KEY = os.environ.get("PD_API_TOKEN")
+TEAM_ID = os.environ.get("PD_TEAM_ID")
 
 if not API_KEY:
-    API_KEY = input("Enter your PagerDuty API key: ")
+    print("Error: Set PD_API_TOKEN (or use a supported script with -t/--token).", file=sys.stderr)
+    sys.exit(1)
 
 if not TEAM_ID:
-    TEAM_ID = input("Enter your PagerDuty team ID: ")
+    print("Error: Set PD_TEAM_ID.", file=sys.stderr)
+    sys.exit(1)
 
 headers = {
     "Authorization": f"Token token={API_KEY}",

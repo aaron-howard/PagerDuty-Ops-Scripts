@@ -11,12 +11,12 @@ import csv
 import io
 import sys
 
-from pd_common import get_pd_api_token, make_api_request
+from pd_common import add_token_arguments, get_pd_api_token, make_api_request
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Export PagerDuty standards adoption.")
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     parser.add_argument(
         "--resource-type",
         default="technical_services",
@@ -70,7 +70,7 @@ def render_table(rows):
 
 def main():
     args = parse_arguments()
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
     print(f"Fetching standards scores for {args.resource_type}...", end="", flush=True, file=sys.stderr)
     raw = fetch_scores(token, args.resource_type)
     print(f" got {len(raw)} resources.", file=sys.stderr)
