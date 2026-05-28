@@ -19,16 +19,19 @@ import sys
 
 import requests
 
-from pd_common import REQUEST_TIMEOUT, get_pd_api_token
+from pd_common import REQUEST_TIMEOUT, add_token_arguments, get_pd_api_token
 
 SCIM_BASE = "https://api.pagerduty.com/scim/v2"
 SCIM_PAGE_SIZE = 100
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Diff PagerDuty SCIM users vs an expected-users CSV.")
+    parser = argparse.ArgumentParser(
+        description="Diff PagerDuty SCIM users vs an expected-users CSV.",
+        epilog="The PagerDuty API token must have SCIM scope.",
+    )
     parser.add_argument("expected_csv", help="CSV with columns: email, displayName, active")
-    parser.add_argument("-t", "--token", help="PagerDuty API token (must have SCIM scope)")
+    add_token_arguments(parser)
     parser.add_argument("-o", "--output", help="Write the report to this file (default stdout).")
     return parser.parse_args()
 
@@ -130,7 +133,7 @@ def render(orphans, missing, drifts):
 
 def main():
     args = parse_arguments()
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
     expected = load_expected(args.expected_csv)
     print(f"Loaded {len(expected)} expected users from {args.expected_csv}", file=sys.stderr)
 

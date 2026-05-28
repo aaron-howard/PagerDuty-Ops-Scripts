@@ -11,12 +11,12 @@ import argparse
 import requests
 from tabulate import tabulate
 
-from pd_common import build_headers, get_pd_api_token, get_pd_team_id
+from pd_common import build_headers, add_token_arguments, get_pd_api_token, get_pd_team_id
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Interactively remove users from a PagerDuty team.")
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     parser.add_argument("--team-id", help="PagerDuty team ID")
     parser.add_argument(
         "--dry-run",
@@ -126,7 +126,7 @@ def remove_user_from_escalation_policy(headers, policy_id, user_id, user_name, d
 
 def main():
     args = parse_arguments()
-    api_key = get_pd_api_token(args.token)
+    api_key = get_pd_api_token(args.token, allow_prompt=args.prompt)
     team_id = get_pd_team_id(args.team_id)
     headers = build_headers(api_key)
     dry_run = args.dry_run

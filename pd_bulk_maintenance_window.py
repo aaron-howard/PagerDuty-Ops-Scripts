@@ -15,13 +15,13 @@ import sys
 
 import requests
 
-from pd_common import PD_API_BASE, REQUEST_TIMEOUT, build_headers, get_pd_api_token
+from pd_common import PD_API_BASE, REQUEST_TIMEOUT, build_headers, add_token_arguments, get_pd_api_token
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Bulk-create PagerDuty maintenance windows from a CSV.")
     parser.add_argument("csv_file", help="CSV with columns: service_id, start_time, end_time, description")
-    parser.add_argument("-t", "--token", help="PagerDuty API token")
+    add_token_arguments(parser)
     parser.add_argument(
         "--from-email",
         required=True,
@@ -89,7 +89,7 @@ def create_window(token, from_email, row, dry_run):
 
 def main():
     args = parse_arguments()
-    token = get_pd_api_token(args.token)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
     rows = load_rows(args.csv_file)
     if not rows:
         print("No rows to process.")

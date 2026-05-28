@@ -16,25 +16,19 @@ import argparse
 from datetime import datetime
 import csv
 import io
-import getpass
 import dotenv
+from pd_common import add_token_arguments, get_pd_api_token
+
 dotenv.load_dotenv()
 
 def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Export PagerDuty IDs and names for various objects.')
-    parser.add_argument('-t', '--token', help='PagerDuty API token')
+    add_token_arguments(parser)
     parser.add_argument('-o', '--output', help='Output file for results (default is to display on screen)')
     parser.add_argument('-f', '--format', choices=['table', 'csv', 'json'], default='table',
                        help='Output format (default: table)')
     return parser.parse_args()
-
-def get_pd_api_token():
-    """Get PagerDuty API token from environment variable or user input."""
-    token = os.environ.get('PD_API_TOKEN')
-    if not token:
-        token = getpass.getpass("Enter your PagerDuty API token: ")
-    return token
 
 def make_api_request(endpoint, token, params=None):
     """Make a request to the PagerDuty API."""
@@ -220,10 +214,7 @@ def main():
     args = parse_arguments()
 
     # Get API token
-    token = args.token if args.token else get_pd_api_token()
-    if not token:
-        print("Error: No API token provided.")
-        sys.exit(1)
+    token = get_pd_api_token(args.token, allow_prompt=args.prompt)
 
     # Get all data from PagerDuty
     teams = get_all_teams(token)
