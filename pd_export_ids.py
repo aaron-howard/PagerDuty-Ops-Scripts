@@ -215,9 +215,6 @@ def main():
 
     # Get API token
     token = get_pd_api_token(args.token, allow_prompt=args.prompt)
-    if not token:
-        print("Error: No API token provided.")
-        sys.exit(1)
 
     # Get all data from PagerDuty
     teams = get_all_teams(token)

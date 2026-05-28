@@ -26,7 +26,10 @@ SCIM_PAGE_SIZE = 100
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Diff PagerDuty SCIM users vs an expected-users CSV.")
+    parser = argparse.ArgumentParser(
+        description="Diff PagerDuty SCIM users vs an expected-users CSV.",
+        epilog="The PagerDuty API token must have SCIM scope.",
+    )
     parser.add_argument("expected_csv", help="CSV with columns: email, displayName, active")
     add_token_arguments(parser)
     parser.add_argument("-o", "--output", help="Write the report to this file (default stdout).")
