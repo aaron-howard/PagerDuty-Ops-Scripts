@@ -9,6 +9,10 @@ Daily Operations Scripts for managing the PagerDuty application.
   ```bash
   pip install -r requirements.txt
   ```
+- Optional development tools:
+  ```bash
+  pip install -r requirements-dev.txt
+  ```
 - A PagerDuty API token
 
 ## Setup
