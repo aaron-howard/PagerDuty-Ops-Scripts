@@ -52,7 +52,7 @@ jobs:
         echo ""
         echo "Example usage:"
         echo "python pd_export_ids.py --format table"
-        echo "python pd_update_service_names.py --dry-run --list"
+        echo "python pd_rename_resources.py --resource services --suffix ' SVC' --dry-run --list"
     
     - name: Test Script Syntax
       run: |

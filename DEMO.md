@@ -28,8 +28,10 @@ This repository contains administrative scripts for PagerDuty management. While 
 **What it shows**:
 - Example output from `pd_export_ids.py`
 - Team member listings
-- Service name update previews
-- Schedule name update previews
+- Service name / schedule rename previews (now [pd_rename_resources.py](pd_rename_resources.py))
+- Flat user/team directory examples ([pd_list_users.py](pd_list_users.py), [pd_list_teams.py](pd_list_teams.py))
+- Incident export sample table ([pd_list_incidents.py](pd_list_incidents.py))
+- Event Orchestration export/apply commands and alert grouping pointers
 - JSON export format examples
 - Sample **v2 schedules** and **status pages** listings (same shapes as `pd_list_schedules.py` / `pd_list_status_pages.py`)
 
@@ -87,7 +89,7 @@ python demo_sample_output.py
    export PD_TEAM_ID=your_team_id_here
    ```
 4. **Run sample demo**: `python demo_sample_output.py`
-5. **Test with dry-run**: `python pd_update_service_names.py --dry-run`
+5. **Test with dry-run**: `python pd_rename_resources.py --resource services --suffix " SVC" --dry-run`
 
 ## Security Best Practices
 

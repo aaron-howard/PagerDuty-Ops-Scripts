@@ -50,6 +50,11 @@ The MCP server and these scripts have different jobs:
 |---|---|
 | Ad-hoc questions ("who's on call for team X right now?", "show open incidents on service Y") | **MCP server** |
 | One-off reads of teams, services, schedules, oncalls, incidents | **MCP server** |
+| Member-level reads for a known team (`list_team_members`, roles on that team) | **MCP server** (or team-specific scripts below) |
+| Flat export of **all users** or **all teams** (CSV/JSON for pipelines, audits, spreadsheets) | **Scripts**: [pd_list_users.py](pd_list_users.py), [pd_list_teams.py](pd_list_teams.py) |
+| **Incident** exports on a schedule, wide filters, or files for ticketing / SIEM (not ad-hoc triage in the IDE) | **Script**: [pd_list_incidents.py](pd_list_incidents.py) |
+| **Event Orchestration** router/global **apply from git-exported JSON** (diff-first, then `--apply`) | **Script**: [pd_apply_event_orchestration_rules.py](pd_apply_event_orchestration_rules.py) |
+| **Alert grouping** create/update/delete from JSON, or bulk attach from CSV | **Script**: [pd_alert_grouping.py](pd_alert_grouping.py) |
 | Bulk writes that need a CSV input, `--dry-run`, or interactive confirmation | **Scripts in this repo** |
 | Inventories of **v2 schedules**, **status pages / posts**, or **git-reviewed Event Orchestration** apply | **Scripts in this repo** |
 | Operations the MCP server **cannot** perform (see below) | **Scripts in this repo** |
@@ -60,7 +65,7 @@ high-impact areas. The scripts here cover the gaps:
 - **User role updates** — MCP exposes no user write tools.
   Use [pd_patch_role.py](pd_patch_role.py).
 - **Escalation policy writes** — MCP escalation policy writes are disabled.
-  Use [pd_update_escalation_policy_names.py](pd_update_escalation_policy_names.py).
+  Use [pd_rename_resources.py](pd_rename_resources.py) with `--resource escalation_policies`.
 - **Maintenance windows, tags, audit export, SCIM, standards, licenses,
   webhooks, extensions, analytics** — none are in the MCP server today.
 - **Event Orchestration router/global apply from exported JSON** — use
@@ -70,9 +75,25 @@ high-impact areas. The scripts here cover the gaps:
 
 When adding new functionality, prefer the MCP server for read-only / ad-hoc use
 cases. Reach for a script when you need bulk writes, dry-run rehearsal, CSV
-input, or coverage of one of the gap areas above.
+input, scheduled exports (including incidents), or coverage of one of the gap areas above.
 
 ## Scripts
+
+### Migration: bulk rename scripts
+
+The former Dallas-specific scripts `pd_update_service_names.py`, `pd_update_schedule_names.py`,
+and `pd_update_escalation_policy_names.py` were **removed** in favor of a single generic tool.
+
+Use [pd_rename_resources.py](pd_rename_resources.py) with a **literal** `--prefix` or `--suffix`
+(no automatic spacing). Examples matching the old behavior (note the leading space in the suffix):
+
+```bash
+python pd_rename_resources.py --resource services --suffix " SVC" --dry-run
+python pd_rename_resources.py --resource schedules --suffix " SCH" --dry-run
+python pd_rename_resources.py --resource escalation_policies --suffix " EP" --dry-run
+```
+
+Add `-y`/`--yes` for non-interactive runs after you have reviewed `--dry-run` output.
 
 ### `pd_export_ids.py`
 
@@ -96,39 +117,55 @@ export PD_API_TOKEN=your_token_here
 python pd_patch_role.py --from-role user --to-role observer [--dry-run] [--yes]
 ```
 
-### `pd_update_service_names.py`
+### `pd_rename_resources.py`
 
-Updates PagerDuty service names by appending "SVC" to the end of each service name if it doesn't already have it.
-
-**Usage:**
-```powershell
-$env:PD_API_TOKEN="your_token_here"
-python pd_update_service_names.py [--list] [--filter TEXT] [--dry-run]
-```
-
-### `pd_update_schedule_names.py`
-
-Updates PagerDuty schedule names by appending "SCH" to the end of each schedule name if it doesn't already have it.
+Bulk-add a configurable **prefix** or **suffix** to names of `services`, `schedules`, or
+`escalation_policies`. Skips resources that already start or end with the given affix string
+(case-sensitive by default; use `--ignore-case` for a case-insensitive check only).
 
 **Usage:**
-```powershell
-$env:PD_API_TOKEN="your_token_here"
-python pd_update_schedule_names.py [--list] [--filter TEXT] [--dry-run]
+```bash
+export PD_API_TOKEN=your_token_here
+python pd_rename_resources.py --resource services --suffix "-prod" [--list] [-f FILTER] [--dry-run] [-y]
+python pd_rename_resources.py --resource schedules --prefix "[SRE] " --dry-run
 ```
-- `-t`, `--token`: PagerDuty API token. If omitted, uses the `PD_API_TOKEN` environment variable.
-- `-l`, `--list`: List schedules without making changes.
-- `-f`, `--filter`: Only process schedules containing this text in their name.
-- `--dry-run`: Show what would be done without making changes to the schedules.
 
-### `pd_update_escalation_policy_names.py`
+If you run from a TTY and omit `--prefix` / `--suffix`, the script prompts for prefix vs suffix
+and the affix string. `--list` does not require an affix. Standard token flags: `-t`, `--prompt`.
 
-Updates PagerDuty escalation policy names by appending "EP" to the end of each policy name if it doesn't already have it.
+### `pd_list_users.py`
+
+Read-only flat list of all users (`id`, `name`, `email`, `role`, `job_title`) with optional
+substring filter on name or email. Outputs `table`, `csv`, or `json`.
 
 **Usage:**
-```powershell
-$env:PD_API_TOKEN="your_token_here"
-python pd_update_escalation_policy_names.py [--list] [--filter TEXT] [--dry-run]
+```bash
+python pd_list_users.py [-f table|csv|json] [-o FILE] [--filter TEXT]
 ```
+
+### `pd_list_teams.py`
+
+Read-only flat list of all teams (`id`, `name`, `description`) with optional substring filter
+on name or description.
+
+**Usage:**
+```bash
+python pd_list_teams.py [-f table|csv|json] [-o FILE] [--filter TEXT]
+```
+
+### `pd_list_incidents.py`
+
+Read-only export of incidents with filters for time range (`--since` / `--until`), `status`
+(`triggered`, `acknowledged`, `resolved`), `service-id`, `team-id`, and assignee `user-id`.
+Outputs `table`, `csv`, or `json`. Assignee column format: `Summary (id)` entries joined by ` | `.
+
+**Usage:**
+```bash
+python pd_list_incidents.py --since 2026-01-01T00:00:00Z --status triggered --status acknowledged -f csv -o incidents.csv
+python pd_list_incidents.py --team-id PXXXXXX -f json -o team_incidents.json
+```
+
+Without `--since`/`--until`, the API returns a potentially large set; the script prints a reminder on stderr.
 
 ### `pd_update_team_roles.py`
 
@@ -261,6 +298,9 @@ Exports each Event Orchestration's metadata, router config, and global catch-all
 to one JSON file per orchestration in the output directory. Designed so the directory
 can be committed to git and rule changes show up as reviewable diffs.
 
+Pair with [pd_apply_event_orchestration_rules.py](pd_apply_event_orchestration_rules.py) to
+push reviewed JSON back to the API: **diff-only first**, then **`--apply -y`** (apply always requires `-y`).
+
 **Usage:**
 ```bash
 python pd_event_orchestration_rules.py -o event_orchestrations/
@@ -325,8 +365,8 @@ schedules coexist in the same account.
 
 **PagerDuty marks v3 as Early Access** with the warning *"Do not use this
 endpoint in production, as it may change"*. This script is intended for
-inventory/visibility only. The existing v2 schedule scripts in this repo
-remain the right tool for production schedule operations until v3 is GA.
+inventory/visibility only. For production v2 schedule **renames**, use
+[pd_rename_resources.py](pd_rename_resources.py) with `--resource schedules` until v3 is GA.
 
 The script automatically sends the required `X-EARLY-ACCESS:
 flexible-schedules-early-access` header.
@@ -339,14 +379,27 @@ python pd_v3_schedules_list.py --get PSCHEDID [--include-users]
 
 ### `pd_alert_grouping.py`
 
-Manages PagerDuty Alert Grouping Settings. `--list` prints existing settings and the
-services they cover; `--attach NAME --services-csv FILE` adds services to the named
-setting (CSV column: `service_id`).
+Manages PagerDuty Alert Grouping Settings (same REST resources the MCP can create/update/delete
+interactively; this script is for **JSON files**, **CSV bulk attach**, and **CI**):
+
+- **`--list`**: print all settings and the services each covers.
+- **`--attach NAME --services-csv FILE`**: add `service_id` rows to the uniquely matched setting.
+- **`--get-json ID`**: dump one setting as JSON (`-o FILE` optional).
+- **`--create-json FILE`**: POST a new setting; JSON must include `name`, `type`, `config`, and `services`
+  (service ids as strings or objects). Wrap in `{"alert_grouping_setting": {...}}` or pass the inner object only.
+- **`--update-json FILE`**: PUT an existing setting; JSON must include `id`.
+- **`--delete ID`**: DELETE a setting.
+
+Use **`--dry-run`** to preview creates/updates/deletes; **`-y`/`--yes`** skips confirmation prompts for writes.
 
 **Usage:**
 ```bash
 python pd_alert_grouping.py --list
 python pd_alert_grouping.py --attach "Intelligent grouping" --services-csv services.csv [--dry-run] [--yes]
+python pd_alert_grouping.py --get-json PZC4OM1 -o setting.json
+python pd_alert_grouping.py --create-json new_setting.json --dry-run
+python pd_alert_grouping.py --update-json setting.json -y
+python pd_alert_grouping.py --delete PZC4OM1 --dry-run
 ```
 
 ## Security Features
@@ -372,11 +425,11 @@ python pd_export_ids.py --format table
 ```
 Outputs a comprehensive table showing teams and their associated schedules, escalation policies, services, and webhooks.
 
-#### Service Name Updates
+#### Bulk resource rename (preview)
 ```bash
-python pd_update_service_names.py --dry-run --list
+python pd_rename_resources.py --resource services --suffix " SVC" --dry-run
 ```
-Shows what services would be updated without making changes.
+Shows planned renames without writing. Use `--list` alone to print current names without an affix.
 
 #### Team Member Management
 ```bash

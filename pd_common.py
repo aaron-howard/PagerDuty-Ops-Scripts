@@ -179,22 +179,45 @@ def fetch_all(resource, token, params=None, name_filter=None, label=None):
     return items
 
 
-def append_suffix_update(
+def _name_has_affix(name, affix, position, *, ignore_case=False):
+    """Return True if `name` already has the affix at prefix or suffix (idempotency)."""
+    n = (name or "").strip()
+    if not affix:
+        return True
+    if ignore_case:
+        n_cmp = n.lower()
+        a_cmp = affix.lower()
+        if position == "prefix":
+            return n_cmp.startswith(a_cmp)
+        return n_cmp.endswith(a_cmp)
+    if position == "prefix":
+        return n.startswith(affix)
+    return n.endswith(affix)
+
+
+def apply_name_affix_update(
     *,
     token,
     resource,
     item_kind,
-    suffix,
+    position,
+    affix,
     name_filter=None,
     list_only=False,
     dry_run=False,
     confirm=True,
+    ignore_case=False,
 ):
-    """Generic flow: fetch a resource collection, append `suffix` to names that lack it.
+    """Fetch a resource collection; add a literal prefix or suffix to names that lack it.
 
     `resource` is the PagerDuty plural endpoint (e.g. "services").
     `item_kind` is the singular wrapper key in PUT bodies (e.g. "service").
+    `position` is "prefix" or "suffix".
+    `affix` is applied as-is (include leading/trailing spaces yourself if desired).
     """
+    if position not in ("prefix", "suffix"):
+        raise ValueError("position must be 'prefix' or 'suffix'")
+
     items = fetch_all(resource, token, name_filter=name_filter, label=resource)
 
     if list_only:
@@ -206,9 +229,13 @@ def append_suffix_update(
         print(f"Total: {len(items)} {resource}")
         return
 
-    suffix_token = f" {suffix}"
-    needs_update = [i for i in items if not (i.get("name") or "").strip().endswith(suffix_token)]
-    print(f"\nFound {len(needs_update)} {resource} that need '{suffix}' appended.")
+    needs_update = [
+        i
+        for i in items
+        if not _name_has_affix(i.get("name"), affix, position, ignore_case=ignore_case)
+    ]
+    action = "prefix" if position == "prefix" else "suffix"
+    print(f"\nFound {len(needs_update)} {resource} that need {action} {affix!r}.")
     if not needs_update:
         return
 
@@ -223,7 +250,10 @@ def append_suffix_update(
     for item in needs_update:
         item_id = item.get("id")
         current = (item.get("name") or "").strip()
-        new_name = f"{current}{suffix_token}"
+        if position == "prefix":
+            new_name = f"{affix}{current}"
+        else:
+            new_name = f"{current}{affix}"
         if dry_run:
             print(f"Would rename {item_kind} '{current}' to '{new_name}' (ID: {item_id})")
             updated += 1
