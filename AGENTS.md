@@ -16,6 +16,12 @@ environment variable. Some team-specific scripts also need `PD_TEAM_ID`.
 | Run any real script | `export PD_API_TOKEN=<token>` then `python <script>.py [--help]` |
 | Dry-run a write script | Add `--dry-run` flag (most write scripts support it) |
 
+### Branching & pull requests
+
+- **One branch per feature** — implement each change set on its own branch (for example `cursor/<topic>` or `feature/<topic>`), not mixed with unrelated edits.
+- **Merge through `main` via PR** — open one pull request per branch into `main` so review, CI, and rollback stay scoped to that feature.
+- **Start from current `main`** — for a new feature, branch off up-to-date `main` (or rebase after earlier PRs land) instead of stacking unrelated work on an open feature branch.
+
 ### Gotchas
 
 - **No automated test suite exists.** The CI workflow (`.github/workflows/demo.yml`) only runs `py_compile` on each script plus `demo_sample_output.py`. There are no pytest/unittest tests to run.
