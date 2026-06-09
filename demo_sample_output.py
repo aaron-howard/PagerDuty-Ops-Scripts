@@ -143,78 +143,29 @@ def demo_json_export():
     print()
 
 
-def demo_compliance_exports():
-    """Sample rows shaped like pd_export_log_entries / pd_export_change_events CSV."""
-    print("=== Compliance export — log entries (sample CSV shape) ===")
-    print("Command: python pd_export_log_entries.py --since ... --until ... -f csv -o log_entries.csv")
+def demo_platform_schedules_and_status_pages():
+    """Sample tables matching pd_list_schedules.py / pd_list_status_pages.py."""
+    print("=== v2 Schedules list (sample) ===")
+    print("Command: python pd_list_schedules.py -f table")
     print()
-    log_rows = [
-        [
-            "Q02JTSNZWHSEKV",
-            "2026-05-10T14:22:01Z",
-            "annotate_log_entry",
-            "Added note: rolling restart complete",
-            "PXPGF42",
-            "Jane Smith",
-            "PIJ90N7",
-            "API Gateway",
-            "PT4KHLK",
-            "12345",
-        ],
-        [
-            "Q02JTSNZWHSEKW",
-            "2026-05-10T14:05:00Z",
-            "resolve_log_entry",
-            "Resolved through the web UI",
-            "PXPGF42",
-            "Jane Smith",
-            "PIJ90N7",
-            "API Gateway",
-            "PT4KHLK",
-            "12345",
-        ],
+    sched_rows = [
+        ["PI7DH85", "Primary On-Call", "America/Chicago", "https://example.pagerduty.com/schedules/PI7DH85"],
+        ["PQ2AB12", "Secondary On-Call", "America/Chicago", "https://example.pagerduty.com/schedules/PQ2AB12"],
     ]
-    print(
-        tabulate(
-            log_rows,
-            headers=[
-                "id",
-                "created_at",
-                "resource_type",
-                "summary",
-                "agent_id",
-                "agent_summary",
-                "service_id",
-                "service_summary",
-                "incident_id",
-                "incident_number",
-            ],
-            tablefmt="github",
-        )
-    )
+    print(tabulate(sched_rows, headers=["ID", "Name", "Time zone", "URL"], tablefmt="github"))
     print()
-    print("=== Compliance export — change events (sample CSV shape) ===")
-    print("Command: python pd_export_change_events.py --since ... --until ... -f csv -o changes.csv")
+    print("=== Status pages list (sample) ===")
+    print("Command: python pd_list_status_pages.py -f table")
     print()
-    chg_rows = [
-        [
-            "CHG01ABCDEF",
-            "change_event",
-            "Deployed api-gateway v2.3.1",
-            "2026-05-10T13:00:00Z",
-            "jenkins-prod",
-            "PIJ90N7",
-        ],
+    page_rows = [
+        ["PSTATUS1", "Public Status", "https://status.example.com"],
     ]
-    print(
-        tabulate(
-            chg_rows,
-            headers=["id", "type", "summary", "timestamp", "source", "service_ids"],
-            tablefmt="github",
-        )
-    )
+    print(tabulate(page_rows, headers=["ID", "Name", "URL"], tablefmt="github"))
     print()
-
+    print("=== Event Orchestration (EO) ===")
+    print("Export: python pd_event_orchestration_rules.py -o event_orchestrations/")
+    print("Diff/apply: python pd_apply_event_orchestration_rules.py -i event_orchestrations/")
+    print()
 
 def main():
     """Run all demo functions."""
@@ -227,12 +178,15 @@ def main():
     demo_service_updates()
     demo_schedule_updates()
     demo_json_export()
-    demo_compliance_exports()
-
+    demo_platform_schedules_and_status_pages()
+    
     print("=" * 50)
     print("📋 Summary of Available Scripts:")
     print("• pd_export_ids.py - Export all PagerDuty objects with IDs")
-    print("• pd_audit_export.py / pd_export_log_entries.py / pd_export_change_events.py - Compliance exports")
+    print("• pd_event_orchestration_rules.py / pd_apply_event_orchestration_rules.py - EO export + diff/apply")
+    print("• pd_list_schedules.py - List v2 on-call schedules")
+    print("• pd_list_status_pages.py - List status pages and posts")
+    print("• pd_v3_schedules_list.py - List v3 flexible schedules (Early Access)")
     print("• pd_update_service_names.py - Standardize service naming")
     print("• pd_update_schedule_names.py - Standardize schedule naming")
     print("• pd_update_escalation_policy_names.py - Standardize policy naming")

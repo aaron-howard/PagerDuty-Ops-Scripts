@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Export PagerDuty Event Orchestration rules to JSON files for review-in-PR.
 
+Companion apply script: ``pd_apply_event_orchestration_rules.py`` diffs or pushes
+router/global ``orchestration_path`` trees from the same JSON layout.
+
 Writes one file per orchestration to the output directory:
 
     <output_dir>/<orchestration_id>__<slugified_name>.json
