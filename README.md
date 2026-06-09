@@ -27,10 +27,15 @@ Daily Operations Scripts for managing the PagerDuty application.
    export PD_TEAM_ID=your_team_id_here
    ```
 
+## Contributing (git workflow)
+
+Use **one branch per feature** and merge each into **`main`** through its **own pull request**. Do not combine unrelated script or doc changes in a single branch/PR. Agents and contributors should follow the same rules; see [AGENTS.md](AGENTS.md) for the full Cursor Cloud notes including this workflow.
+
 ## Environment Variables
 
 - `PD_API_TOKEN`: Your PagerDuty API token (required for all scripts)
 - `PD_TEAM_ID`: Your PagerDuty team ID (required for team-specific scripts)
+- `PD_FROM_EMAIL`: Optional default for mutating calls that require a PagerDuty `From` header (e.g. `pd_apply_event_orchestration_rules.py --apply`).
 
 ## When to use scripts vs the PagerDuty MCP server
 
@@ -51,6 +56,7 @@ The MCP server and these scripts have different jobs:
 | **Event Orchestration** router/global **apply from git-exported JSON** (diff-first, then `--apply`) | **Script**: [pd_apply_event_orchestration_rules.py](pd_apply_event_orchestration_rules.py) |
 | **Alert grouping** create/update/delete from JSON, or bulk attach from CSV | **Script**: [pd_alert_grouping.py](pd_alert_grouping.py) |
 | Bulk writes that need a CSV input, `--dry-run`, or interactive confirmation | **Scripts in this repo** |
+| Inventories of **v2 schedules**, **status pages / posts**, or **git-reviewed Event Orchestration** apply | **Scripts in this repo** |
 | Operations the MCP server **cannot** perform (see below) | **Scripts in this repo** |
 
 The PagerDuty MCP server intentionally does not expose write access to several
@@ -62,6 +68,10 @@ high-impact areas. The scripts here cover the gaps:
   Use [pd_rename_resources.py](pd_rename_resources.py) with `--resource escalation_policies`.
 - **Maintenance windows, tags, audit export, SCIM, standards, licenses,
   webhooks, extensions, analytics** — none are in the MCP server today.
+- **Event Orchestration router/global apply from exported JSON** — use
+  [pd_apply_event_orchestration_rules.py](pd_apply_event_orchestration_rules.py)
+  for reviewable diffs and guarded writes (MCP is aimed at ad-hoc reads, not
+  bulk promotion from git).
 
 When adding new functionality, prefer the MCP server for read-only / ad-hoc use
 cases. Reach for a script when you need bulk writes, dry-run rehearsal, CSV
@@ -237,6 +247,30 @@ python pd_audit_export.py --since 2026-04-01T00:00:00Z --until 2026-05-01T00:00:
     --action update --root-resource-type services -f csv -o audit.csv
 ```
 
+### `pd_export_log_entries.py`
+
+Exports `GET /log_entries` (account-wide) or `GET /incidents/{id}/log_entries` to CSV or JSON.
+Use explicit `--since` / `--until` for reproducible compliance pulls. Optional `--is-overview` reduces
+noise; `--team-id` / `--service-id` restrict scope when the API supports it.
+
+**Usage:**
+```bash
+python pd_export_log_entries.py --since 2026-05-01T00:00:00Z --until 2026-06-01T00:00:00Z -f csv -o log_entries.csv
+python pd_export_log_entries.py --incident-id PT4KHLK --since 2026-05-01T00:00:00Z -f json -o incident_logs.json
+```
+
+### `pd_export_change_events.py`
+
+Exports `GET /change_events`, or change events scoped to a **service** or **incident** (related change events).
+Output is CSV or JSON for correlation with incidents and deployments.
+
+**Usage:**
+```bash
+python pd_export_change_events.py --since 2026-05-01T00:00:00Z --until 2026-06-01T00:00:00Z -f csv -o changes.csv
+python pd_export_change_events.py --service-id PIJ90N7 --since 2026-05-01T00:00:00Z -f csv -o svc_changes.csv
+python pd_export_change_events.py --incident-id PT4KHLK -f json -o incident_changes.json
+```
+
 ### `pd_scim_user_audit.py`
 
 Diffs PagerDuty SCIM users (`/scim/v2/Users`) against an expected-users CSV
@@ -274,21 +308,37 @@ python pd_event_orchestration_rules.py -o event_orchestrations/
 
 ### `pd_apply_event_orchestration_rules.py`
 
-Applies router and `global` **orchestration_path** objects from a directory of JSON files
-in the same format as [pd_event_orchestration_rules.py](pd_event_orchestration_rules.py).
-
-**Step 1 — diff only (default, or pass `--dry-run` explicitly):** fetches live state, prints
-unified diffs on stderr, **no writes**. Review this output (or capture it in CI on every PR).
-
-**Step 2 — apply:** `--apply` **must** be used with **`-y`/`--yes`** after review. PUTs only
-paths that differ. `--apply` cannot be combined with `--dry-run`. There is no interactive
-apply path.
+Diffs or applies router and global `orchestration_path` JSON produced by
+`pd_event_orchestration_rules.py` against the live API. Default mode prints a
+unified diff only. Applying requires `-y` and a PagerDuty `From` email (`--from-email`
+or `PD_FROM_EMAIL`), same pattern as other mutating REST calls.
 
 **Usage:**
 ```bash
-python pd_apply_event_orchestration_rules.py -d event_orchestrations/
-python pd_apply_event_orchestration_rules.py -d event_orchestrations/ --dry-run
-python pd_apply_event_orchestration_rules.py -d event_orchestrations/ --apply -y
+python pd_apply_event_orchestration_rules.py -i event_orchestrations/
+python pd_apply_event_orchestration_rules.py -i event_orchestrations/ --apply -y --from-email you@example.com
+```
+
+### `pd_list_schedules.py`
+
+Read-only list of **v2** schedules (`GET /schedules`). Use this for production
+on-call schedules backed by the classic API. For v3 flexible schedules (Early
+Access), use `pd_v3_schedules_list.py`.
+
+**Usage:**
+```bash
+python pd_list_schedules.py [-f table|csv|json] [-o FILE] [--name-filter SUBSTR]
+```
+
+### `pd_list_status_pages.py`
+
+Read-only list of status pages (`GET /status_pages`), or posts on one page
+(`GET /status_pages/{id}/posts`).
+
+**Usage:**
+```bash
+python pd_list_status_pages.py [-f table|csv|json] [-o FILE] [--name-filter SUBSTR]
+python pd_list_status_pages.py --posts PSTATUSPAGEID [-f table|csv|json]
 ```
 
 ### `pd_bulk_extensions.py`

@@ -33,6 +33,7 @@ This repository contains administrative scripts for PagerDuty management. While 
 - Incident export sample table ([pd_list_incidents.py](pd_list_incidents.py))
 - Event Orchestration export/apply commands and alert grouping pointers
 - JSON export format examples
+- Sample **v2 schedules** and **status pages** listings (same shapes as `pd_list_schedules.py` / `pd_list_status_pages.py`)
 
 **How to run**:
 ```bash

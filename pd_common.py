@@ -98,18 +98,45 @@ def make_api_request(endpoint, token, method="GET", params=None, data=None, extr
         return None
 
 
+def expand_query_params(params):
+    """Turn a query params dict into (key, value) pairs for requests.
+
+    List/tuple values emit repeated keys (e.g. ``team_ids[]``). Booleans become
+    ``\"true\"`` / ``\"false\"``. ``None`` values are skipped.
+    """
+    pairs = []
+    for k, v in (params or {}).items():
+        if v is None:
+            continue
+        if isinstance(v, (list, tuple)):
+            for item in v:
+                if item is None:
+                    continue
+                pairs.append((k, item))
+        elif isinstance(v, bool):
+            pairs.append((k, str(v).lower()))
+        else:
+            pairs.append((k, v))
+    return pairs
+
+
 def paginate(resource, token, params=None, page_size=100, extra_headers=None, items_key=None):
     """Yield items from a paginated PagerDuty list endpoint.
 
     `items_key` defaults to the last path segment of `resource` (so "schedules"
     for resource="v3/schedules"). Set explicitly when the response key differs
     from the URL path.
+
+    ``params`` may include list values (e.g. multiple ``team_ids[]``); they are
+    expanded into repeated query keys for each HTTP request.
     """
-    base_params = dict(params or {})
+    base_pairs = expand_query_params(params)
     key = items_key or resource.rsplit("/", 1)[-1]
     offset = 0
     while True:
-        page_params = {**base_params, "limit": page_size, "offset": offset}
+        page_params = list(base_pairs)
+        page_params.append(("limit", page_size))
+        page_params.append(("offset", offset))
         data = make_api_request(resource, token, params=page_params, extra_headers=extra_headers)
         if not data or key not in data:
             break

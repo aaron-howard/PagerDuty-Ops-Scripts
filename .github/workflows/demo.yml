@@ -29,14 +29,18 @@ jobs:
         echo "=== PagerDuty Scripts Demo ==="
         echo "This demo shows the structure and capabilities of the PagerDuty operations scripts."
         echo ""
-        echo "Available scripts (high level):"
-        echo "• pd_export_ids.py - Export teams, schedules, services, and webhooks (relational)"
-        echo "• pd_rename_resources.py - Bulk prefix/suffix renames for services, schedules, escalation policies"
-        echo "• pd_list_users.py / pd_list_teams.py - Flat directory exports (table/csv/json)"
-        echo "• pd_list_incidents.py - Incident exports (filters, csv/json)"
-        echo "• pd_event_orchestration_rules.py / pd_apply_event_orchestration_rules.py - EO export + guarded apply"
-        echo "• pd_alert_grouping.py - Alert grouping list, JSON CRUD, CSV attach"
-        echo "• pd_get_teams_user_role.py - List team members and roles (deprecated for MCP reads)"
+        echo "Platform / config highlights:"
+        echo "• pd_event_orchestration_rules.py / pd_apply_event_orchestration_rules.py — EO export + diff/apply"
+        echo "• pd_list_schedules.py — v2 schedules inventory"
+        echo "• pd_list_status_pages.py — status pages and posts"
+        echo "• pd_v3_schedules_list.py — v3 flexible schedules (Early Access)"
+        echo ""
+        echo "Available scripts (sample):"
+        echo "• pd_export_ids.py - Export teams, schedules, services, and webhooks"
+        echo "• pd_update_service_names.py - Update service names with 'SVC' suffix"
+        echo "• pd_update_schedule_names.py - Update schedule names with 'SCH' suffix"
+        echo "• pd_update_escalation_policy_names.py - Update policy names with 'EP' suffix"
+        echo "• pd_get_teams_user_role.py - List team members and roles"
         echo "• pd_update_team_roles.py - Interactive role management"
         echo "• pd_remove_team_members.py - Remove team members"
         echo "• update_service_notifications.py - Update notification settings"
@@ -52,10 +56,10 @@ jobs:
     
     - name: Test Script Syntax
       run: |
-        echo "Testing script syntax for all Python files..."
-        shopt -s nullglob
+        echo "Testing script syntax..."
+        set -e
         for f in *.py; do
-          echo "  py_compile $f"
+          echo "python -m py_compile $f"
           python -m py_compile "$f"
         done
         echo "✅ All scripts have valid syntax"

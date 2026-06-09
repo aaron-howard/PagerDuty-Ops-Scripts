@@ -199,6 +199,31 @@ def demo_json_export():
     print(json.dumps(sample_json, indent=2))
     print()
 
+
+def demo_platform_schedules_and_status_pages():
+    """Sample tables matching pd_list_schedules.py / pd_list_status_pages.py."""
+    print("=== v2 Schedules list (sample) ===")
+    print("Command: python pd_list_schedules.py -f table")
+    print()
+    sched_rows = [
+        ["PI7DH85", "Primary On-Call", "America/Chicago", "https://example.pagerduty.com/schedules/PI7DH85"],
+        ["PQ2AB12", "Secondary On-Call", "America/Chicago", "https://example.pagerduty.com/schedules/PQ2AB12"],
+    ]
+    print(tabulate(sched_rows, headers=["ID", "Name", "Time zone", "URL"], tablefmt="github"))
+    print()
+    print("=== Status pages list (sample) ===")
+    print("Command: python pd_list_status_pages.py -f table")
+    print()
+    page_rows = [
+        ["PSTATUS1", "Public Status", "https://status.example.com"],
+    ]
+    print(tabulate(page_rows, headers=["ID", "Name", "URL"], tablefmt="github"))
+    print()
+    print("=== Event Orchestration (EO) ===")
+    print("Export: python pd_event_orchestration_rules.py -o event_orchestrations/")
+    print("Diff/apply: python pd_apply_event_orchestration_rules.py -i event_orchestrations/")
+    print()
+
 def main():
     """Run all demo functions."""
     print("🚀 PagerDuty Operations Scripts - Demo Output")
@@ -212,15 +237,18 @@ def main():
     demo_incidents_export()
     demo_eo_and_alert_grouping()
     demo_json_export()
+    demo_platform_schedules_and_status_pages()
     
     print("=" * 50)
     print("📋 Summary of Available Scripts:")
-    print("• pd_export_ids.py - Export all PagerDuty objects with IDs (relational)")
-    print("• pd_rename_resources.py - Configurable prefix/suffix renames (services, schedules, EPs)")
-    print("• pd_list_users.py / pd_list_teams.py - Flat user and team directory (table/csv/json)")
-    print("• pd_list_incidents.py - Filtered incident export for ticketing / SIEM (table/csv/json)")
-    print("• pd_event_orchestration_rules.py / pd_apply_event_orchestration_rules.py - EO export, diff, apply (-y)")
-    print("• pd_alert_grouping.py - Alert grouping list, CRUD JSON, CSV attach")
+    print("• pd_export_ids.py - Export all PagerDuty objects with IDs")
+    print("• pd_event_orchestration_rules.py / pd_apply_event_orchestration_rules.py - EO export + diff/apply")
+    print("• pd_list_schedules.py - List v2 on-call schedules")
+    print("• pd_list_status_pages.py - List status pages and posts")
+    print("• pd_v3_schedules_list.py - List v3 flexible schedules (Early Access)")
+    print("• pd_update_service_names.py - Standardize service naming")
+    print("• pd_update_schedule_names.py - Standardize schedule naming")
+    print("• pd_update_escalation_policy_names.py - Standardize policy naming")
     print("• pd_get_teams_user_role.py - List team members and roles")
     print("• pd_update_team_roles.py - Interactive role management")
     print("• pd_remove_team_members.py - Remove team members")
