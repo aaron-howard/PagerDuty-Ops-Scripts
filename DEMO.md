@@ -31,6 +31,7 @@ This repository contains administrative scripts for PagerDuty management. While 
 - Service name update previews
 - Schedule name update previews
 - JSON export format examples
+- Sample **log entry** and **change event** CSV-style rows (audit trail exports)
 
 **How to run**:
 ```bash
