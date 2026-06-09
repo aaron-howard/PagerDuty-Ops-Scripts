@@ -29,7 +29,13 @@ jobs:
         echo "=== PagerDuty Scripts Demo ==="
         echo "This demo shows the structure and capabilities of the PagerDuty operations scripts."
         echo ""
-        echo "Available scripts:"
+        echo "Platform / config highlights:"
+        echo "• pd_event_orchestration_rules.py / pd_apply_event_orchestration_rules.py — EO export + diff/apply"
+        echo "• pd_list_schedules.py — v2 schedules inventory"
+        echo "• pd_list_status_pages.py — status pages and posts"
+        echo "• pd_v3_schedules_list.py — v3 flexible schedules (Early Access)"
+        echo ""
+        echo "Available scripts (sample):"
         echo "• pd_export_ids.py - Export teams, schedules, services, and webhooks"
         echo "• pd_update_service_names.py - Update service names with 'SVC' suffix"
         echo "• pd_update_schedule_names.py - Update schedule names with 'SCH' suffix"
@@ -51,15 +57,11 @@ jobs:
     - name: Test Script Syntax
       run: |
         echo "Testing script syntax..."
-        python -m py_compile pd_export_ids.py
-        python -m py_compile pd_update_service_names.py
-        python -m py_compile pd_update_schedule_names.py
-        python -m py_compile pd_update_escalation_policy_names.py
-        python -m py_compile pd_get_teams_user_role.py
-        python -m py_compile pd_update_team_roles.py
-        python -m py_compile pd_remove_team_members.py
-        python -m py_compile update_service_notifications.py
-        python -m py_compile demo_sample_output.py
+        set -e
+        for f in *.py; do
+          echo "python -m py_compile $f"
+          python -m py_compile "$f"
+        done
         echo "✅ All scripts have valid syntax"
     
     - name: Run Demo with Sample Data
