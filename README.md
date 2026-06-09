@@ -27,6 +27,10 @@ Daily Operations Scripts for managing the PagerDuty application.
    export PD_TEAM_ID=your_team_id_here
    ```
 
+## Contributing (git workflow)
+
+Use **one branch per feature** and merge each into **`main`** through its **own pull request**. Do not combine unrelated script or doc changes in a single branch/PR. Agents and contributors should follow the same rules; see [AGENTS.md](AGENTS.md) for the full Cursor Cloud notes including this workflow.
+
 ## Environment Variables
 
 - `PD_API_TOKEN`: Your PagerDuty API token (required for all scripts)
