@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Export PagerDuty Event Orchestration rules to JSON files for review-in-PR.
 
+After merge, push changes with pd_apply_event_orchestration_rules.py (diff-only, then --apply -y).
+
 Writes one file per orchestration to the output directory:
 
     <output_dir>/<orchestration_id>__<slugified_name>.json

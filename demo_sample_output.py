@@ -81,37 +81,94 @@ def demo_team_members():
     print(tabulate(sample_members, headers=["ID", "Type", "Summary", "Role"], tablefmt="github"))
     print()
 
-def demo_service_updates():
-    """Demonstrate the service name update script output."""
-    print("=== Service Name Updates Demo ===")
-    print("Command: python pd_update_service_names.py --dry-run --list")
+def demo_bulk_rename_resources():
+    """Demonstrate generic bulk rename (services / schedules / escalation policies)."""
+    print("=== Bulk resource rename demo ===")
+    print("Command: python pd_rename_resources.py --resource services --suffix \" SVC\" --dry-run")
     print()
-    
-    sample_services = [
-        ["SVC101JKL", "Database Monitoring", "Database Monitoring SVC", "✅ Already has SVC suffix"],
-        ["SVC202MNO", "Server Monitoring", "Server Monitoring SVC", "✅ Already has SVC suffix"],
-        ["SVC303PQR", "API Gateway", "API Gateway SVC", "✅ Already has SVC suffix"],
-        ["SVC404STU", "Load Balancer", "Load Balancer SVC", "✅ Already has SVC suffix"],
-        ["SVC505VWX", "Cache Service", "Cache Service SVC", "✅ Already has SVC suffix"]
+    sample = [
+        ["SVC101JKL", "Database Monitoring", "Would add suffix if missing"],
+        ["SVC202MNO", "Server Monitoring SVC", "Already ends with affix — skipped"],
+        ["SVC303PQR", "API Gateway", "Would become 'API Gateway SVC' (if suffix is ' SVC')"],
     ]
-    
-    print(tabulate(sample_services, headers=["Service ID", "Current Name", "New Name", "Status"], tablefmt="github"))
+    print(tabulate(sample, headers=["Resource ID", "Current name", "Note"], tablefmt="github"))
     print()
 
-def demo_schedule_updates():
-    """Demonstrate the schedule name update script output."""
-    print("=== Schedule Name Updates Demo ===")
-    print("Command: python pd_update_schedule_names.py --dry-run --list")
+def demo_flat_directory():
+    """Demonstrate flat user/team list scripts."""
+    print("=== Flat directory exports ===")
+    print("Commands: python pd_list_users.py -f csv")
+    print("          python pd_list_teams.py --filter Infra -f json")
     print()
-    
-    sample_schedules = [
-        ["SCH101JKL", "Primary On-Call", "Primary On-Call SCH", "✅ Already has SCH suffix"],
-        ["SCH202MNO", "Secondary On-Call", "Secondary On-Call SCH", "✅ Already has SCH suffix"],
-        ["SCH303PQR", "Weekend Coverage", "Weekend Coverage SCH", "✅ Already has SCH suffix"],
-        ["SCH404STU", "Holiday Schedule", "Holiday Schedule SCH", "✅ Already has SCH suffix"]
+    users = [
+        ["PABC123", "Ada Lovelace", "ada@example.com", "user", "SRE"],
+        ["PDEF456", "Grace Hopper", "grace@example.com", "admin", "Platform"],
     ]
-    
-    print(tabulate(sample_schedules, headers=["Schedule ID", "Current Name", "New Name", "Status"], tablefmt="github"))
+    print(tabulate(users, headers=["id", "name", "email", "role", "job_title"], tablefmt="github"))
+    print()
+
+def demo_incidents_export():
+    """Demonstrate incident list/export for ops pipelines."""
+    print("=== Incident export demo ===")
+    print(
+        "Command: python pd_list_incidents.py --since 2026-01-01T00:00:00Z "
+        "--status triggered,acknowledged -f csv -o incidents.csv"
+    )
+    print()
+    rows = [
+        [
+            "Q1ABCDEF",
+            "42",
+            "Elevated error rate on checkout",
+            "triggered",
+            "high",
+            "2026-01-15T14:22:00Z",
+            "https://example.pagerduty.com/incidents/Q1ABCDEF",
+            "PABCD12",
+            "Checkout API",
+            "Ada Lovelace (PUSER01)",
+        ],
+        [
+            "Q2ABCDEF",
+            "41",
+            "Disk space low on db-primary",
+            "acknowledged",
+            "low",
+            "2026-01-15T13:05:00Z",
+            "https://example.pagerduty.com/incidents/Q2ABCDEF",
+            "PABCD34",
+            "Database",
+            "Grace Hopper (PUSER02) | On-Call Escalation (PXYZ99)",
+        ],
+    ]
+    headers = [
+        "id",
+        "incident_number",
+        "title",
+        "status",
+        "urgency",
+        "created_at",
+        "html_url",
+        "service_id",
+        "service_summary",
+        "assignees",
+    ]
+    print(tabulate(rows, headers=headers, tablefmt="github"))
+    print()
+
+def demo_eo_and_alert_grouping():
+    """Event Orchestration export/apply workflow and alert grouping CRUD pointers."""
+    print("=== Event Orchestration + Alert Grouping ===")
+    print("Export rules to git:")
+    print("  python pd_event_orchestration_rules.py -o event_orchestrations/")
+    print("Diff live vs JSON (no writes):")
+    print("  python pd_apply_event_orchestration_rules.py -d event_orchestrations/")
+    print("Apply after review (requires -y):")
+    print("  python pd_apply_event_orchestration_rules.py -d event_orchestrations/ --apply -y")
+    print()
+    print("Alert grouping: list / get-json / create-json / update-json / delete / attach-from-CSV")
+    print("  python pd_alert_grouping.py --list")
+    print("  python pd_alert_grouping.py --get-json PZC4OM1 -o setting.json")
     print()
 
 def demo_json_export():
@@ -150,16 +207,20 @@ def main():
     
     demo_export_ids()
     demo_team_members()
-    demo_service_updates()
-    demo_schedule_updates()
+    demo_bulk_rename_resources()
+    demo_flat_directory()
+    demo_incidents_export()
+    demo_eo_and_alert_grouping()
     demo_json_export()
     
     print("=" * 50)
     print("📋 Summary of Available Scripts:")
-    print("• pd_export_ids.py - Export all PagerDuty objects with IDs")
-    print("• pd_update_service_names.py - Standardize service naming")
-    print("• pd_update_schedule_names.py - Standardize schedule naming")
-    print("• pd_update_escalation_policy_names.py - Standardize policy naming")
+    print("• pd_export_ids.py - Export all PagerDuty objects with IDs (relational)")
+    print("• pd_rename_resources.py - Configurable prefix/suffix renames (services, schedules, EPs)")
+    print("• pd_list_users.py / pd_list_teams.py - Flat user and team directory (table/csv/json)")
+    print("• pd_list_incidents.py - Filtered incident export for ticketing / SIEM (table/csv/json)")
+    print("• pd_event_orchestration_rules.py / pd_apply_event_orchestration_rules.py - EO export, diff, apply (-y)")
+    print("• pd_alert_grouping.py - Alert grouping list, CRUD JSON, CSV attach")
     print("• pd_get_teams_user_role.py - List team members and roles")
     print("• pd_update_team_roles.py - Interactive role management")
     print("• pd_remove_team_members.py - Remove team members")
