@@ -24,9 +24,12 @@ environment variable. Some team-specific scripts also need `PD_TEAM_ID`.
 
 ### Gotchas
 
-- **No automated test suite exists.** The CI workflow (`.github/workflows/demo.yml`) only runs `py_compile` on each script plus `demo_sample_output.py`. There are no pytest/unittest tests to run.
+- **No automated test suite exists.** The CI workflow (`.github/workflows/demo.yml`) runs `py_compile` on every root `*.py` file plus `demo_sample_output.py`. There are no pytest/unittest tests to run.
 - **All real scripts require network access** to `api.pagerduty.com`. Without `PD_API_TOKEN` set, scripts will either exit with an error or prompt interactively for a token (via `getpass`).
 - **Interactive prompts**: Several scripts (`pd_update_team_roles.py`, `pd_remove_team_members.py`, and the suffix-renaming scripts without `--yes`) prompt for confirmation on stdin. Use `--yes` or `--dry-run` flags when running non-interactively.
+- **Compliance exports** — [pd_audit_export.py](pd_audit_export.py) (audit records),
+  [pd_export_log_entries.py](pd_export_log_entries.py) (log entries),
+  [pd_export_change_events.py](pd_export_change_events.py) (change events).
 - **Shared helpers** live in `pd_common.py` — use `get_pd_api_token`, `make_api_request`, `paginate`, etc. for consistency.
 - **Platform / config scripts**: `pd_event_orchestration_rules.py` + `pd_apply_event_orchestration_rules.py` (export/apply EO router+global), `pd_list_schedules.py` (v2 schedules), `pd_list_status_pages.py` (status pages and posts), and `pd_v3_schedules_list.py` (v3 Early Access schedules).
 - **Dependencies install to user site-packages** (`~/.local/lib/...`) by default on Cloud VMs. This works fine; no virtualenv is needed.

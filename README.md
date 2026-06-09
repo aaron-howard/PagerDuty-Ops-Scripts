@@ -210,6 +210,30 @@ python pd_audit_export.py --since 2026-04-01T00:00:00Z --until 2026-05-01T00:00:
     --action update --root-resource-type services -f csv -o audit.csv
 ```
 
+### `pd_export_log_entries.py`
+
+Exports `GET /log_entries` (account-wide) or `GET /incidents/{id}/log_entries` to CSV or JSON.
+Use explicit `--since` / `--until` for reproducible compliance pulls. Optional `--is-overview` reduces
+noise; `--team-id` / `--service-id` restrict scope when the API supports it.
+
+**Usage:**
+```bash
+python pd_export_log_entries.py --since 2026-05-01T00:00:00Z --until 2026-06-01T00:00:00Z -f csv -o log_entries.csv
+python pd_export_log_entries.py --incident-id PT4KHLK --since 2026-05-01T00:00:00Z -f json -o incident_logs.json
+```
+
+### `pd_export_change_events.py`
+
+Exports `GET /change_events`, or change events scoped to a **service** or **incident** (related change events).
+Output is CSV or JSON for correlation with incidents and deployments.
+
+**Usage:**
+```bash
+python pd_export_change_events.py --since 2026-05-01T00:00:00Z --until 2026-06-01T00:00:00Z -f csv -o changes.csv
+python pd_export_change_events.py --service-id PIJ90N7 --since 2026-05-01T00:00:00Z -f csv -o svc_changes.csv
+python pd_export_change_events.py --incident-id PT4KHLK -f json -o incident_changes.json
+```
+
 ### `pd_scim_user_audit.py`
 
 Diffs PagerDuty SCIM users (`/scim/v2/Users`) against an expected-users CSV
