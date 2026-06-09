@@ -31,6 +31,7 @@ Daily Operations Scripts for managing the PagerDuty application.
 
 - `PD_API_TOKEN`: Your PagerDuty API token (required for all scripts)
 - `PD_TEAM_ID`: Your PagerDuty team ID (required for team-specific scripts)
+- `PD_FROM_EMAIL`: Optional default for mutating calls that require a PagerDuty `From` header (e.g. `pd_apply_event_orchestration_rules.py --apply`).
 
 ## When to use scripts vs the PagerDuty MCP server
 
@@ -46,6 +47,7 @@ The MCP server and these scripts have different jobs:
 | Ad-hoc questions ("who's on call for team X right now?", "show open incidents on service Y") | **MCP server** |
 | One-off reads of teams, services, schedules, oncalls, incidents | **MCP server** |
 | Bulk writes that need a CSV input, `--dry-run`, or interactive confirmation | **Scripts in this repo** |
+| Inventories of **v2 schedules**, **status pages / posts**, or **git-reviewed Event Orchestration** apply | **Scripts in this repo** |
 | Operations the MCP server **cannot** perform (see below) | **Scripts in this repo** |
 
 The PagerDuty MCP server intentionally does not expose write access to several
@@ -57,6 +59,10 @@ high-impact areas. The scripts here cover the gaps:
   Use [pd_update_escalation_policy_names.py](pd_update_escalation_policy_names.py).
 - **Maintenance windows, tags, audit export, SCIM, standards, licenses,
   webhooks, extensions, analytics** — none are in the MCP server today.
+- **Event Orchestration router/global apply from exported JSON** — use
+  [pd_apply_event_orchestration_rules.py](pd_apply_event_orchestration_rules.py)
+  for reviewable diffs and guarded writes (MCP is aimed at ad-hoc reads, not
+  bulk promotion from git).
 
 When adding new functionality, prefer the MCP server for read-only / ad-hoc use
 cases. Reach for a script when you need bulk writes, dry-run rehearsal, CSV
@@ -230,6 +236,41 @@ can be committed to git and rule changes show up as reviewable diffs.
 **Usage:**
 ```bash
 python pd_event_orchestration_rules.py -o event_orchestrations/
+```
+
+### `pd_apply_event_orchestration_rules.py`
+
+Diffs or applies router and global `orchestration_path` JSON produced by
+`pd_event_orchestration_rules.py` against the live API. Default mode prints a
+unified diff only. Applying requires `-y` and a PagerDuty `From` email (`--from-email`
+or `PD_FROM_EMAIL`), same pattern as other mutating REST calls.
+
+**Usage:**
+```bash
+python pd_apply_event_orchestration_rules.py -i event_orchestrations/
+python pd_apply_event_orchestration_rules.py -i event_orchestrations/ --apply -y --from-email you@example.com
+```
+
+### `pd_list_schedules.py`
+
+Read-only list of **v2** schedules (`GET /schedules`). Use this for production
+on-call schedules backed by the classic API. For v3 flexible schedules (Early
+Access), use `pd_v3_schedules_list.py`.
+
+**Usage:**
+```bash
+python pd_list_schedules.py [-f table|csv|json] [-o FILE] [--name-filter SUBSTR]
+```
+
+### `pd_list_status_pages.py`
+
+Read-only list of status pages (`GET /status_pages`), or posts on one page
+(`GET /status_pages/{id}/posts`).
+
+**Usage:**
+```bash
+python pd_list_status_pages.py [-f table|csv|json] [-o FILE] [--name-filter SUBSTR]
+python pd_list_status_pages.py --posts PSTATUSPAGEID [-f table|csv|json]
 ```
 
 ### `pd_bulk_extensions.py`

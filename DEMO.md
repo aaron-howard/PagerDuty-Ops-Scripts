@@ -31,6 +31,7 @@ This repository contains administrative scripts for PagerDuty management. While 
 - Service name update previews
 - Schedule name update previews
 - JSON export format examples
+- Sample **v2 schedules** and **status pages** listings (same shapes as `pd_list_schedules.py` / `pd_list_status_pages.py`)
 
 **How to run**:
 ```bash
