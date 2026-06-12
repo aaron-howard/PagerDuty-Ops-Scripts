@@ -10,9 +10,11 @@
 ## Layering
 
 ```
-pd_*.py shims ──▶ pagerduty_ops.commands.* ──▶ cli / output / bulkops ──▶ api ──▶ PagerDuty
-console scripts ─┘                                    config / log ──────┘
+pd_*.py shims ──▶ pagerduty_ops.cli.run(main) ──▶ pagerduty_ops.commands.* ──▶ cli / output / bulkops ──▶ api ──▶ PagerDuty
+console_scripts ─┘                                    config / log ──────┘
 ```
+
+Setuptools entry points are defined in `pagerduty_ops/console_scripts.py`; each invokes `run(main)` like the `pd_*.py` shims.
 
 ### `api.py` — HTTP client
 
@@ -23,7 +25,7 @@ console scripts ─┘                                    config / log ───
 
 ### `cli.py` — command plumbing and the exit-code contract
 
-`standard_parser()` gives every command identical flags (`-t/--prompt`, `-v/-q/--log-file`, optional `-f/-o`, optional `--dry-run/-y`). `confirm()` is the single write guard: dry-run and `-y` pass through; a non-TTY stdin without `-y` refuses. `finish_bulk()` converts (succeeded, failed) into exit code 0/1. `run()` wraps entry points and maps `PDApiError` → exit 1 (or 3 for auth) and Ctrl-C → 130.
+`standard_parser()` gives every command identical flags (`-t/--prompt`, `-v/-q/--log-file`, optional `-f/-o`, optional `--dry-run/-y`). `confirm()` is the single write guard: dry-run and `-y` pass through; a non-TTY stdin without `-y` raises **exit 2** (usage) so unattended jobs do not look successful. `finish_bulk()` converts (succeeded, failed) into exit code 0/1. `run()` wraps entry points and maps `PDApiError` → exit 1 (or 3 for auth) and Ctrl-C → 130.
 
 ### `bulkops.py` — bulk-operation building blocks
 

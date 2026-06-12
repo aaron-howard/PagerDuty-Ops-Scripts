@@ -72,8 +72,8 @@ def attach(token, args) -> int:
         raise SystemExit(2)
     setting = find_setting(token, args.attach)
     rows = load_csv_rows(args.services_csv, {"service_id"}, skip_if_missing=("service_id",))
-    new_ids = [r["service_id"] for r in rows]
-    existing_ids = {svc.get("id") for svc in setting.get("services") or []}
+    new_ids = [r["service_id"] for r in rows if r.get("service_id")]
+    existing_ids = {ref["id"] for ref in _service_refs(setting)}
     to_add = [sid for sid in new_ids if sid not in existing_ids]
     log.info("Setting %r covers %d services; %d new to add.",
              setting["name"], len(existing_ids), len(to_add))
@@ -86,7 +86,8 @@ def attach(token, args) -> int:
     if not confirm(f"Add {len(to_add)} services to '{setting['name']}'?",
                    assume_yes=args.yes):
         return 0
-    merged = [{"id": sid, "type": "service_reference"} for sid in existing_ids | set(new_ids)]
+    all_ids = existing_ids | {sid for sid in new_ids if sid}
+    merged = [{"id": sid, "type": "service_reference"} for sid in all_ids]
     body = {
         "alert_grouping_setting": {
             "name": setting["name"],
