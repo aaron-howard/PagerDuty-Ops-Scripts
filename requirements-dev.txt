@@ -1,2 +1,7 @@
-pre-commit>=4.6.0
-ruff>=0.15.14
+# Development/test dependencies. Source of truth: pyproject.toml [project.optional-dependencies].
+ruff>=0.15.0
+pre-commit>=4.0.0
+pytest>=8.0.0
+pytest-cov>=5.0.0
+responses>=0.25.0
+pip-audit>=2.7.0
