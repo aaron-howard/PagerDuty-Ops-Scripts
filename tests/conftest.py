@@ -19,7 +19,8 @@ def _fresh_session():
 def _quiet_logs():
     """Keep pd_ops logging configured but quiet during tests."""
     logger = logging.getLogger("pd_ops")
-    logger.addHandler(logging.NullHandler())
+    if not any(isinstance(h, logging.NullHandler) for h in logger.handlers):
+        logger.addHandler(logging.NullHandler())
     logger.setLevel(logging.DEBUG)
     yield
 

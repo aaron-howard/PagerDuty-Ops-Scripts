@@ -91,9 +91,11 @@ def confirm(question: str, *, assume_yes: bool, dry_run: bool = False) -> bool:
     if dry_run or assume_yes:
         return True
     if not sys.stdin.isatty():
-        log.error("Refusing to write without confirmation on a non-interactive stdin. "
-                  "Pass -y/--yes (after reviewing --dry-run output).")
-        return False
+        log.error(
+            "Refusing to write without confirmation on a non-interactive stdin. "
+            "Pass -y/--yes (after reviewing --dry-run output)."
+        )
+        raise SystemExit(EXIT_USAGE)
     answer = input(f"{question} (y/n): ").strip().lower()
     if answer != "y":
         print("Operation cancelled.", file=sys.stderr)
