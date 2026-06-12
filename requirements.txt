@@ -1,4 +1,6 @@
+# Runtime dependencies. Source of truth: pyproject.toml [project.dependencies].
+# Floors here; Dependabot keeps them current. For fully reproducible deploys,
+# pin with `pip freeze` into a lockfile in your deployment pipeline.
 requests>=2.31.0
-prettytable>=3.17.0
 python-dotenv>=1.2.2
 tabulate>=0.10.0

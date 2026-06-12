@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pagerduty-ops-scripts"
+version = "1.0.0"
+description = "Production-hardened operational automation for PagerDuty"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "requests>=2.31.0",
+    "python-dotenv>=1.2.2",
+    "tabulate>=0.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.15.0",
+    "pre-commit>=4.0.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "responses>=0.25.0",
+    "pip-audit>=2.7.0",
+]
+
+[project.scripts]
+pd-list-users = "pagerduty_ops.commands.list_users:main"
+pd-list-teams = "pagerduty_ops.commands.list_teams:main"
+pd-list-schedules = "pagerduty_ops.commands.list_schedules:main"
+pd-list-incidents = "pagerduty_ops.commands.list_incidents:main"
+pd-list-status-pages = "pagerduty_ops.commands.list_status_pages:main"
+pd-v3-schedules = "pagerduty_ops.commands.v3_schedules:main"
+pd-export-ids = "pagerduty_ops.commands.export_ids:main"
+pd-audit-export = "pagerduty_ops.commands.audit_export:main"
+pd-export-log-entries = "pagerduty_ops.commands.export_log_entries:main"
+pd-export-change-events = "pagerduty_ops.commands.export_change_events:main"
+pd-scim-user-audit = "pagerduty_ops.commands.scim_user_audit:main"
+pd-standards-report = "pagerduty_ops.commands.standards_report:main"
+pd-patch-role = "pagerduty_ops.commands.patch_role:main"
+pd-rename-resources = "pagerduty_ops.commands.rename_resources:main"
+pd-team-members = "pagerduty_ops.commands.team_members:main"
+pd-update-team-roles = "pagerduty_ops.commands.update_team_roles:main"
+pd-remove-team-members = "pagerduty_ops.commands.remove_team_members:main"
+pd-service-urgency = "pagerduty_ops.commands.service_urgency:main"
+pd-bulk-maintenance-window = "pagerduty_ops.commands.bulk_maintenance_window:main"
+pd-apply-tags = "pagerduty_ops.commands.apply_tags:main"
+pd-bulk-extensions = "pagerduty_ops.commands.bulk_extensions:main"
+pd-alert-grouping = "pagerduty_ops.commands.alert_grouping:main"
+pd-eo-export = "pagerduty_ops.commands.event_orchestration:export_main"
+pd-eo-apply = "pagerduty_ops.commands.event_orchestration:apply_main"
+
+[tool.setuptools]
+packages = ["pagerduty_ops", "pagerduty_ops.commands"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["audit", "demo_sample_output.py"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",  # pycodestyle / pyflakes
+    "B",            # bugbear
+    "I",            # import sorting
+    "UP",           # pyupgrade
+    "S",            # bandit security rules
+]
+ignore = [
+    "S101",  # assert — fine in tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106", "S603"]
+"pd_*.py" = ["E402"]
+"update_service_notifications.py" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["pagerduty_ops"]
