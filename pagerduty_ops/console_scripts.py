@@ -25,8 +25,20 @@ def pd_list_teams() -> None:
     _entry("list_teams")
 
 
+def pd_list_services() -> None:
+    _entry("list_services")
+
+
 def pd_list_schedules() -> None:
     _entry("list_schedules")
+
+
+def pd_list_escalation_policies() -> None:
+    _entry("list_escalation_policies")
+
+
+def pd_list_webhooks() -> None:
+    _entry("list_webhooks")
 
 
 def pd_list_incidents() -> None:

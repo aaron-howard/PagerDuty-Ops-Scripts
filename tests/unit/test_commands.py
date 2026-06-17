@@ -11,8 +11,9 @@ from pagerduty_ops.api import PD_API_BASE
 COMMAND_MODULES = [
     "alert_grouping", "apply_tags", "audit_export", "bulk_extensions",
     "bulk_maintenance_window", "event_orchestration", "export_change_events",
-    "export_ids", "export_log_entries", "list_incidents", "list_schedules",
-    "list_status_pages", "list_teams", "list_users", "patch_role",
+    "export_ids", "export_log_entries", "list_escalation_policies", "list_incidents",
+    "list_schedules", "list_services", "list_status_pages", "list_teams", "list_users",
+    "list_webhooks", "patch_role",
     "remove_team_members", "rename_resources", "scim_user_audit",
     "service_urgency", "standards_report", "team_members",
     "update_team_roles", "v3_schedules",
@@ -110,7 +111,138 @@ def test_slugify():
     assert slugify(None) == "unnamed"
 
 
+def test_webhook_scope_and_row():
+    from pagerduty_ops.commands.list_webhooks import webhook_row, webhook_scope
+
+    assert webhook_scope({"filter": {"type": "service_reference", "id": "S1"}}) == (
+        "service_reference", "S1",
+    )
+    assert webhook_scope({"service": {"id": "S2"}}) == ("service_reference", "S2")
+    row = webhook_row({
+        "id": "WH1",
+        "description": "Datadog hook",
+        "filter": {"type": "service_reference", "id": "S1"},
+        "delivery_method": {"url": "https://example.com/hook"},
+        "events": ["incident.triggered", "incident.resolved"],
+        "html_url": "https://acme.pagerduty.com/webhooks/WH1",
+    })
+    assert row["scope_type"] == "service_reference"
+    assert row["scope_id"] == "S1"
+    assert row["endpoint_url"] == "https://example.com/hook"
+    assert "incident.triggered" in row["events"]
+
+
 # ---------- end-to-end with mocked HTTP ----------
+
+@responses.activate
+def test_list_escalation_policies_end_to_end_csv(monkeypatch, capsys, token):
+    monkeypatch.setenv("PD_API_TOKEN", token)
+    responses.get(
+        f"{PD_API_BASE}/escalation_policies",
+        json={"escalation_policies": [{
+            "id": "PEP123",
+            "name": "Platform EP",
+            "description": "Primary platform escalation",
+            "num_loops": 2,
+            "html_url": "https://acme.pagerduty.com/escalation_policies/PEP123",
+            "teams": [{"id": "PTEAM1", "summary": "Platform"}],
+        }], "more": False},
+    )
+    from pagerduty_ops.commands.list_escalation_policies import main
+
+    assert main(["-f", "csv"]) == 0
+    out = capsys.readouterr().out
+    assert out.splitlines()[0] == (
+        "id,name,description,num_loops,team_ids,team_names,html_url"
+    )
+    assert "PEP123,Platform EP,Primary platform escalation,2,PTEAM1,Platform," in out
+
+
+@responses.activate
+def test_list_webhooks_end_to_end_csv(monkeypatch, capsys, token):
+    monkeypatch.setenv("PD_API_TOKEN", token)
+    responses.get(
+        f"{PD_API_BASE}/webhook_subscriptions",
+        json={"webhook_subscriptions": [{
+            "id": "PWH123",
+            "description": "Datadog hook",
+            "filter": {"type": "service_reference", "id": "PSVC1"},
+            "delivery_method": {"url": "https://example.com/hook"},
+            "events": ["incident.triggered"],
+            "html_url": "https://acme.pagerduty.com/webhooks/PWH123",
+        }], "more": False},
+    )
+    from pagerduty_ops.commands.list_webhooks import main
+
+    assert main(["-f", "csv"]) == 0
+    out = capsys.readouterr().out
+    assert out.splitlines()[0] == (
+        "id,description,scope_type,scope_id,endpoint_url,events,html_url"
+    )
+    assert (
+        "PWH123,Datadog hook,service_reference,PSVC1,https://example.com/hook,"
+        "incident.triggered,"
+    ) in out
+
+
+@responses.activate
+def test_list_schedules_team_filter_passes_team_ids(monkeypatch, token):
+    monkeypatch.setenv("PD_API_TOKEN", token)
+    responses.get(
+        f"{PD_API_BASE}/schedules",
+        json={"schedules": [], "more": False},
+    )
+    from pagerduty_ops.commands.list_schedules import main
+
+    assert main(["--team-id", "PTEAM1"]) == 0
+    params = responses.calls[0].request.params
+    assert params["include[]"] == "teams"
+    team_param = params["team_ids[]"]
+    assert team_param == "PTEAM1" or team_param == ["PTEAM1"]
+
+
+@responses.activate
+def test_list_services_end_to_end_csv(monkeypatch, capsys, token):
+    monkeypatch.setenv("PD_API_TOKEN", token)
+    responses.get(
+        f"{PD_API_BASE}/services",
+        json={"services": [{
+            "id": "PABC123",
+            "name": "Prod API",
+            "status": "active",
+            "description": "Production API service",
+            "html_url": "https://acme.pagerduty.com/services/PABC123",
+            "escalation_policy": {"id": "PXYZ", "summary": "Platform EP"},
+            "teams": [{"id": "PTEAM1", "summary": "Platform"}],
+        }], "more": False},
+    )
+    from pagerduty_ops.commands.list_services import main
+
+    assert main(["-f", "csv"]) == 0
+    out = capsys.readouterr().out
+    assert out.splitlines()[0] == (
+        "id,name,status,description,escalation_policy_id,escalation_policy_name,"
+        "team_ids,team_names,html_url"
+    )
+    assert "PABC123,Prod API,active,Production API service,PXYZ,Platform EP,PTEAM1,Platform," in out
+
+
+@responses.activate
+def test_list_services_team_filter_passes_team_ids(monkeypatch, token):
+    monkeypatch.setenv("PD_API_TOKEN", token)
+    responses.get(
+        f"{PD_API_BASE}/services",
+        json={"services": [], "more": False},
+    )
+    from pagerduty_ops.commands.list_services import main
+
+    assert main(["--team-id", "PTEAM1,PTEAM2", "--team-id", "PTEAM3"]) == 0
+    params = responses.calls[0].request.params
+    assert params["include[]"] == "teams"
+    assert params["team_ids[]"] == ["PTEAM1", "PTEAM2", "PTEAM3"]
+    assert params["limit"] == "100"
+    assert params["offset"] == "0"
+
 
 @responses.activate
 def test_list_users_end_to_end_csv(monkeypatch, capsys, token):

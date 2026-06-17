@@ -1,7 +1,4 @@
-"""List PagerDuty v2 schedules (GET /schedules). Read-only.
-
-For v3 'flexible schedules' (Early Access), use the v3-schedules command.
-"""
+"""List all PagerDuty services (flat directory export for pipelines and audits)."""
 
 from __future__ import annotations
 
@@ -13,8 +10,10 @@ from .list_incidents import parse_multi
 FIELDNAMES = [
     "id",
     "name",
+    "status",
     "description",
-    "time_zone",
+    "escalation_policy_id",
+    "escalation_policy_name",
     "team_ids",
     "team_names",
     "html_url",
@@ -23,14 +22,14 @@ FIELDNAMES = [
 
 def build_parser():
     p = standard_parser(
-        "List PagerDuty schedules (API v2 /schedules).", formats=("table", "csv", "json")
+        "List PagerDuty services (id, name, status, escalation policy, teams).",
+        formats=("table", "csv", "json"),
     )
     p.add_argument(
         "--filter",
-        "--name-filter",
         dest="text_filter",
         metavar="TEXT",
-        help="Substring match on schedule name (server-side query, case-insensitive).",
+        help="Substring match on service name (server-side query, case-insensitive).",
     )
     p.add_argument(
         "--team-id",
@@ -38,7 +37,7 @@ def build_parser():
         action="append",
         default=[],
         metavar="ID",
-        help="Only schedules linked to this team; repeat or comma-separate.",
+        help="Only services linked to this team; repeat or comma-separate.",
     )
     return p
 
@@ -62,16 +61,19 @@ def _join_team_field(teams, key: str) -> str:
     return ", ".join(parts)
 
 
-def schedule_row(schedule: dict) -> dict:
-    teams = schedule.get("teams") or []
+def service_row(service: dict) -> dict:
+    policy = service.get("escalation_policy") or {}
+    teams = service.get("teams") or []
     return {
-        "id": schedule.get("id", ""),
-        "name": schedule.get("name") or schedule.get("summary", ""),
-        "description": schedule.get("description") or "",
-        "time_zone": schedule.get("time_zone", ""),
+        "id": service.get("id") or "",
+        "name": service.get("name") or "",
+        "status": service.get("status") or "",
+        "description": service.get("description") or "",
+        "escalation_policy_id": policy.get("id") or "",
+        "escalation_policy_name": policy.get("summary") or "",
         "team_ids": _join_team_field(teams, "id"),
         "team_names": _join_team_field(teams, "summary"),
-        "html_url": schedule.get("html_url", ""),
+        "html_url": service.get("html_url") or "",
     }
 
 
@@ -79,13 +81,13 @@ def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     token = init(args)
     params = build_query_params(args)
-    schedules = fetch_all(
-        "schedules",
+    services = fetch_all(
+        "services",
         token,
         params=params,
         name_filter=args.text_filter,
-        label="schedules",
+        label="services",
     )
-    rows = [schedule_row(s) for s in schedules]
-    write_payload(render_rows(rows, FIELDNAMES, args.format, raw=schedules), args.output)
+    rows = [service_row(s) for s in services]
+    write_payload(render_rows(rows, FIELDNAMES, args.format, raw=services), args.output)
     return 0

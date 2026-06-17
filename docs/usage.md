@@ -15,9 +15,29 @@ pd-list-users --filter "smith" -f json
 pd-list-teams --filter platform
 ```
 
+### pd-list-services
+```bash
+pd-list-services -f csv -o services.csv
+pd-list-services --filter prod --team-id PXXXXXX -f json
+```
+
 ### pd-list-schedules (v2)
 ```bash
-pd-list-schedules --name-filter "SRE" -f csv -o schedules.csv
+pd-list-schedules --filter "SRE" -f csv -o schedules.csv
+pd-list-schedules --name-filter "SRE" --team-id PXXXXXX   # --name-filter still works
+```
+
+### pd-list-escalation-policies
+```bash
+pd-list-escalation-policies -f csv -o escalation_policies.csv
+pd-list-escalation-policies --filter platform --team-id PXXXXXX
+```
+
+### pd-list-webhooks
+```bash
+pd-list-webhooks -f csv -o webhooks.csv
+pd-list-webhooks --service-id PXXXXXX --filter datadog
+pd-list-webhooks --team-id PXXXXXX -f json
 ```
 
 ### pd-list-incidents
