@@ -1,7 +1,4 @@
-"""List PagerDuty v2 schedules (GET /schedules). Read-only.
-
-For v3 'flexible schedules' (Early Access), use the v3-schedules command.
-"""
+"""List all PagerDuty escalation policies (flat directory export)."""
 
 from __future__ import annotations
 
@@ -14,7 +11,7 @@ FIELDNAMES = [
     "id",
     "name",
     "description",
-    "time_zone",
+    "num_loops",
     "team_ids",
     "team_names",
     "html_url",
@@ -23,14 +20,14 @@ FIELDNAMES = [
 
 def build_parser():
     p = standard_parser(
-        "List PagerDuty schedules (API v2 /schedules).", formats=("table", "csv", "json")
+        "List PagerDuty escalation policies (id, name, teams).",
+        formats=("table", "csv", "json"),
     )
     p.add_argument(
         "--filter",
-        "--name-filter",
         dest="text_filter",
         metavar="TEXT",
-        help="Substring match on schedule name (server-side query, case-insensitive).",
+        help="Substring match on policy name (server-side query, case-insensitive).",
     )
     p.add_argument(
         "--team-id",
@@ -38,7 +35,7 @@ def build_parser():
         action="append",
         default=[],
         metavar="ID",
-        help="Only schedules linked to this team; repeat or comma-separate.",
+        help="Only policies linked to this team; repeat or comma-separate.",
     )
     return p
 
@@ -62,16 +59,17 @@ def _join_team_field(teams, key: str) -> str:
     return ", ".join(parts)
 
 
-def schedule_row(schedule: dict) -> dict:
-    teams = schedule.get("teams") or []
+def policy_row(policy: dict) -> dict:
+    teams = policy.get("teams") or []
+    num_loops = policy.get("num_loops")
     return {
-        "id": schedule.get("id", ""),
-        "name": schedule.get("name") or schedule.get("summary", ""),
-        "description": schedule.get("description") or "",
-        "time_zone": schedule.get("time_zone", ""),
+        "id": policy.get("id") or "",
+        "name": policy.get("name") or "",
+        "description": policy.get("description") or "",
+        "num_loops": "" if num_loops is None else str(num_loops),
         "team_ids": _join_team_field(teams, "id"),
         "team_names": _join_team_field(teams, "summary"),
-        "html_url": schedule.get("html_url", ""),
+        "html_url": policy.get("html_url") or "",
     }
 
 
@@ -79,13 +77,13 @@ def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     token = init(args)
     params = build_query_params(args)
-    schedules = fetch_all(
-        "schedules",
+    policies = fetch_all(
+        "escalation_policies",
         token,
         params=params,
         name_filter=args.text_filter,
-        label="schedules",
+        label="escalation policies",
     )
-    rows = [schedule_row(s) for s in schedules]
-    write_payload(render_rows(rows, FIELDNAMES, args.format, raw=schedules), args.output)
+    rows = [policy_row(p) for p in policies]
+    write_payload(render_rows(rows, FIELDNAMES, args.format, raw=policies), args.output)
     return 0

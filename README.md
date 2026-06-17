@@ -45,7 +45,10 @@ See [docs/architecture.md](docs/architecture.md) for details.
 |---|---|---|---|
 | `pd-list-users` | pd_list_users.py | no | All users → table/CSV/JSON |
 | `pd-list-teams` | pd_list_teams.py | no | All teams |
+| `pd-list-services` | pd_list_services.py | no | All services |
 | `pd-list-schedules` | pd_list_schedules.py | no | v2 schedules inventory |
+| `pd-list-escalation-policies` | pd_list_escalation_policies.py | no | Escalation policies |
+| `pd-list-webhooks` | pd_list_webhooks.py | no | Webhook subscriptions |
 | `pd-list-incidents` | pd_list_incidents.py | no | Incident export with filters |
 | `pd-list-status-pages` | pd_list_status_pages.py | no | Status pages / posts |
 | `pd-v3-schedules` | pd_v3_schedules_list.py | no | v3 schedules (Early Access) |
